@@ -1,0 +1,50 @@
+name: 更新資料並部署
+
+on:
+  schedule:
+    - cron: "10 6 * * 1-5"
+    - cron: "40 10 * * 1-5"
+    - cron: "40 23 * * 0-4"
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Unpack site zip (first run only)
+        run: |
+          if [ -f zheng2-signal-site.zip ]; then
+            unzip -q -o zheng2-signal-site.zip -x 'zheng2-signal/.github/*'
+            cp -r zheng2-signal/. .
+            rm -rf zheng2-signal zheng2-signal-site.zip
+          fi
+      - name: Update data
+        run: python3 scripts/update.py || echo "::warning::update failed, keeping previous data"
+      - name: Commit data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "data: $(date -u +%F)"
+          git push || echo "::warning::push failed"
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: .
+      - id: deploy
+        uses: actions/deploy-pages@v4
