@@ -81,6 +81,22 @@ nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; backgroun
 .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
 .card b { font-weight: 600; font-variant-numeric: tabular-nums; }
 
+/* 判斷依據 */
+.facts { margin: 0; }
+.fact { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+.fact:last-child { border-bottom: 0; padding-bottom: 0; }
+.fact:first-child { padding-top: 0; }
+.fact-k { font-size: 14px; }
+.fact-v { font-size: 19px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; letter-spacing: -.01em; white-space: nowrap; }
+.fact-v small { font-size: 13px; font-weight: 500; margin-left: 6px; }
+.fact-s { grid-column: 1 / -1; color: var(--mut); font-size: 12.5px; }
+.decide-rule { font-size: 17px; line-height: 1.55; font-weight: 600; text-wrap: balance; }
+.decide-mine { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.decide-mine b { font-weight: 700; }
+.decide-mine a { color: inherit; }
+.tag { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: var(--soft); margin-right: 6px; white-space: nowrap; }
+.tag.act { background: var(--warnbg); color: var(--warn); }
+
 /* 表格 */
 .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -16px; padding: 0 16px; }
 table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
@@ -147,9 +163,14 @@ ol.steps li, ul.rules li { margin: 6px 0; }
   <div id="loading">讀取資料中…</div>
   <div class="banner" id="stale" hidden></div>
 
-  <!-- 今日 -->
+  <!-- 今日：今天要不要下單 -->
   <section data-tab="today" hidden>
-    <div class="banner" id="chg-banner" hidden></div>
+    <div class="card" id="decide">
+      <h2>今天要不要下單</h2>
+      <p class="decide-rule" id="rule-say">—</p>
+      <p class="decide-mine" id="mine-say">—</p>
+      <p class="note">回測假設在調整日的收盤前（13:20 到 13:30）成交。改成隔天開盤或當天盤後定價，近 10 年的年化報酬差不到 1.1 個百分點。</p>
+    </div>
     <div class="card" id="alloc">
       <h2>目標配置（占總資金）</h2>
       <div class="alloc">
@@ -158,14 +179,22 @@ ol.steps li, ul.rules li { margin: 6px 0; }
         <div><div class="alloc-name"><i class="sw" style="background:var(--cCash)"></i>現金</div><div class="big"><span id="wC">—</span><small>%</small></div></div>
       </div>
       <div class="bar" id="allocbar" role="img" aria-label="目標配置比例條"></div>
-      <p class="verdict" id="today-verdict"></p>
       <p class="note">合計曝險 <b id="exp">—</b> 倍（00631L 算 2 倍、0050 算 1 倍）。上次訊號變更：<span class="num" id="last-chg">—</span>。</p>
     </div>
-    <div class="tiles">
-      <div class="card"><div class="tile-k">加權指數收盤</div><div class="tile-v" id="close">—</div><div class="tile-k num" id="close-date">—</div></div>
-      <div class="card"><div class="tile-k">距一年高點</div><div class="tile-v" id="dd">—</div><div class="tile-k">高點 <span class="num" id="hi">—</span></div></div>
-      <div class="card"><div class="tile-k">距 200 日線</div><div class="tile-v" id="dist">—</div><div class="tile-k">200 日線 <span class="num" id="ma">—</span></div></div>
-      <div class="card"><div class="tile-k">VIX</div><div class="tile-v" id="vix">—</div><div class="tile-k">美股 <span class="num" id="vix-date">—</span> 收盤，僅供參考</div></div>
+    <div class="card" id="facts-rule-card">
+      <h2>規則用到的數據</h2>
+      <div class="facts" id="facts-rule"></div>
+      <h3>下一個觸發價位</h3>
+      <div class="scroll"><table><thead><tr><th>加權指數收在這裡時</th><th>價位</th><th>距收盤</th></tr></thead><tbody id="levels"></tbody></table></div>
+      <p class="note">訊號只看收盤，盤中碰到不算。價位會隨一年高點與 200 日線每天移動。</p>
+    </div>
+    <div class="card" id="facts-ref-card">
+      <h2>參考數據（不在規則內）</h2>
+      <div class="facts" id="facts-ref"></div>
+      <h3>官方擔保維持率，近 5 個交易日</h3>
+      <div class="scroll"><table><thead><tr><th>日期</th><th>全市場擔保維持率</th><th>低於 130% 戶數</th><th>通知補繳</th><th>應處分戶數</th><th>應處分金額</th></tr></thead><tbody id="keep-body"></tbody></table></div>
+      <p class="note">擔保維持率與融資餘額是證交所的官方數字，通常在交易日晚上公布，所以日期可能比指數晚一天。官方維持率是全市場整戶合併計算，和過去民間推估的「大盤融資維持率」算法不同，舊的 130% 到 140% 門檻不能直接套用。</p>
+      <p class="note">回測（2001 年起）：加權指數回落 20% 時，融資餘額 20 日內減少 5% 以上的 6 次，一年後全部上漲；沒有減少這麼多的 2 次，一年後都下跌。樣本只有 8 次，而且把它寫進規則後績效幾乎沒變，所以只列出來當參考。</p>
     </div>
     <div class="two">
       <div class="card">
@@ -178,11 +207,6 @@ ol.steps li, ul.rules li { margin: 6px 0; }
         <p>桶內 00631L <b id="bL">—</b>%、現金 <b id="bC">—</b>%</p>
         <p class="note">加權指數高於 200 日線 3% 全部持有 00631L，低於 200 日線 3% 全部轉現金，中間維持原狀。</p>
       </div>
-    </div>
-    <div class="card">
-      <h2>下一個觸發價位</h2>
-      <div class="scroll"><table><thead><tr><th>加權指數收在這裡時</th><th>價位</th><th>距收盤</th></tr></thead><tbody id="levels"></tbody></table></div>
-      <p class="note">價位會隨一年高點與 200 日線每天移動。訊號只看收盤，盤中碰到不算。</p>
     </div>
   </section>
 
@@ -290,12 +314,12 @@ ol.steps li, ul.rules li { margin: 6px 0; }
         <li>這個網站只是把固定規則算出來，不是投資建議。回測是歷史結果，不代表未來。</li>
         <li>壓力測試裡這套規則的最大回撤約 68%（2000 到 2008 年）。</li>
         <li>00631L 相對「單純每日兩倍加權指數」的額外報酬近幾年已大幅縮水，未來報酬可能不如回測。</li>
-        <li>融資維持率不在規則內，也沒有回測過。VIX 只列出供參考。</li>
+        <li>融資餘額、官方擔保維持率和 VIX 都不在規則內，只列在「今日」頁當參考。融資餘額減幅當加碼條件回測過，對績效幾乎沒有影響。</li>
       </ul>
     </div>
     <div class="card">
       <h2>資料與更新</h2>
-      <p>價格來自 Yahoo Finance（^TWII、^VIX、0050.TW、00631L.TW）。每個交易日收盤後自動更新，另外在晚上和隔天早上各補跑一次。</p>
+      <p>價格來自 Yahoo Finance（^TWII、^VIX、0050.TW、00631L.TW），擔保維持率與融資餘額來自證交所臺股儀表板。每個交易日收盤後自動更新，另外在晚上和隔天早上各補跑一次。</p>
       <p class="note">這次資料產生於 <span class="num" id="generated">—</span>。持股與本金等輸入只存在你這台裝置的瀏覽器。</p>
     </div>
   </section>
@@ -320,40 +344,88 @@ const el = (tag, text, cls) => { const e = document.createElement(tag); if (text
 const tr = (cells, cls) => { const r = el('tr', null, cls); cells.forEach((c) => r.append(Array.isArray(c) ? el('td', c[0], c[1]) : el('td', c))); return r; };
 const tone = (v) => (v > 0 ? 'up' : v < 0 ? 'dn' : '');
 
-/* ── 今日 ── */
+/* ── 部位計算（今日頁與試算頁共用） ── */
+function position() {
+  const t = D.today, add = val('in-add');
+  const cur = { L: val('in-sl') * t.pxL, s50: val('in-s50') * t.px50, cash: val('in-cash') + add }, tot = cur.L + cur.s50 + cur.cash;
+  if (!(tot > 0)) return null;
+  const tgt = { L: t.wL / 100 * tot, s50: t.w50 / 100 * tot, cash: t.wC / 100 * tot };
+  const drift = Math.max(...['L', 's50', 'cash'].map((k) => Math.abs(cur[k] - tgt[k]) / tot * 100));
+  const sh = (k, px) => Math.trunc(Math.abs(tgt[k] - cur[k]) / px);
+  const trades = [['L', '00631L', t.pxL], ['s50', '0050', t.px50]].filter(([k, , px]) => sh(k, px) > 0).map(([k, name, px]) => `${tgt[k] >= cur[k] ? '買' : '賣'} ${name} ${f0(sh(k, px))} 股`);
+  return { t, add, cur, tgt, tot, drift, need: !!t.changed || drift > D.drift, trades };
+}
+
+/* ── 今日：今天要不要下單 ── */
+const chgEl = (v, unit = '%') => { const s = el('small', v == null ? '' : (v > 0 ? '+' : '') + f2(v) + unit, tone(v)); return s; };
+const fact = (k, v, sub, chg) => { const r = el('div', null, 'fact'); const vv = el('div', v, 'fact-v'); if (chg != null) vv.append(chgEl(chg)); r.append(el('div', k, 'fact-k'), vv); if (sub) r.append(el('div', sub, 'fact-s')); return r; };
 function renderToday() {
-  const t = D.today, d = D.daily, n = d.date.length;
+  const t = D.today, d = D.daily, n = d.date.length, M = D.margin || {};
   $('asof').textContent = `資料日 ${t.date} 收盤`;
   const days = Math.floor((Date.now() - new Date(t.date + 'T13:30:00+08:00').getTime()) / 864e5);
   $('stale').hidden = days < 5;
   if (days >= 5) $('stale').textContent = `資料已經 ${days} 天沒有更新，目前顯示的是 ${t.date} 的收盤。若不是連續假期，可能是自動更新出了問題。`;
-  [['wL', f0], ['w50', f0], ['wC', f0], ['aL', f0], ['a50', f0], ['bL', f0], ['bC', f0], ['close', f0], ['hi', f0], ['ma', f0], ['dd', pct], ['dist', sgn], ['vix', f1], ['exp', f2]]
-    .forEach(([k, f]) => { $(k).textContent = f(t[k]); });
-  $('close-date').textContent = t.date; $('vix-date').textContent = t.vix_date;
+  [['wL', f0], ['w50', f0], ['wC', f0], ['aL', f0], ['a50', f0], ['bL', f0], ['bC', f0], ['exp', f2]].forEach(([k, f]) => { $(k).textContent = f(t[k]); });
   $('lvlword').textContent = t.lvl ? `第 ${t.lvl} 階` : '未觸發'; $('onword').textContent = t.on ? '進場' : '出場';
   const bar = $('allocbar'); bar.replaceChildren();
   [[t.wL, 'var(--cL)'], [t.w50, 'var(--c50)'], [t.wC, 'var(--cCash)']].forEach(([w, c]) => { if (w > 0) { const s = el('div'); s.style.width = w + '%'; s.style.background = c; bar.append(s); } });
-  $('chg-banner').hidden = !t.changed;
-  if (t.changed) $('chg-banner').textContent = `目標配置在 ${t.date} 收盤後變了。照規則，下一個交易日調整到下面的比例。`;
-  $('today-verdict').textContent = t.changed ? '訊號有變更，下一個交易日調整。' : '和前一個交易日相同，不需要因為訊號而調整。';
   let last = -1; for (let i = n - 1; i >= 0; i--) if (d.changed[i]) { last = i; break; }
-  $('last-chg').textContent = last < 0 ? '近 2 年沒有' : `${d.date[last]}（${n - 1 - last} 個交易日前）`;
+  $('last-chg').textContent = last < 0 ? '近 2 年沒有' : `${d.date[last]}（${n - 1 - last ? (n - 1 - last) + ' 個交易日前' : '最新這個交易日'}）`;
+
+  /* 規則狀態 */
+  const tpe = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date());
+  const rule = $('rule-say'); rule.replaceChildren();
+  if (t.changed) {
+    rule.append(el('span', '訊號變更', 'tag act'), `目標配置在 ${t.date} 收盤後變了。照規則，調整日是下一個交易日` + (tpe > t.date ? '；今天有開市的話就是今天。' : '。'));
+  } else {
+    rule.append(el('span', '訊號沒變', 'tag'), `${t.date} 收盤後目標配置和前一天相同，沒有因為訊號要做的調整。`);
+  }
+  renderMine();
+
+  /* 規則用到的數據 */
+  $('facts-rule').replaceChildren(
+    fact('加權指數收盤', f0(t.close), `${t.date}`, t.chg),
+    fact('距一年高點', pct(t.dd), `一年高點 ${f0(t.hi)}。逆勢桶${t.lvl ? `在第 ${t.lvl} 階` : '未觸發'}；回落 10%、20%、30% 各加一階`),
+    fact('距 200 日線', sgn(t.dist), `200 日線 ${f0(t.ma)}。順勢桶${t.on ? '進場中，跌破 -3% 才出場' : '出場中，站上 +3% 才進場'}`),
+  );
   $('levels').replaceChildren(...D.levels.map((l) => tr([[l.label, 'wrap-cell'], f0(l.px), sgn(l.gap)])));
+
+  /* 參考數據 */
+  const ref = [fact('VIX', f1(t.vix), `美股 ${t.vix_date} 收盤，台股收盤時已知的最新值`, t.vix_chg)];
+  const keep = M.keep || [];
+  if (keep.length) {
+    const k = keep[keep.length - 1], kp = keep[keep.length - 2];
+    ref.push(fact('全市場擔保維持率', f2(k.rate) + '%', `${k.date}，證交所官方。${kp ? `前一個交易日 ${f2(kp.rate)}%` : ''}`));
+    ref.push(fact('維持率低於 130% 的戶數', f0(k.call), `${k.date}。當日通知補繳 ${f2(k.callAmt)} 億元${kp ? `；前一個交易日 ${f0(kp.call)} 戶` : ''}`));
+    ref.push(fact('隔日應處分（斷頭）戶數', f0(k.exe), `${k.date}。金額 ${f2(k.exeAmt)} 億元${kp ? `；前一個交易日 ${f0(kp.exe)} 戶` : ''}`));
+  } else ref.push(fact('全市場擔保維持率', '—', '這次沒有抓到證交所的資料'));
+  if (M.bal) {
+    const b = M.bal;
+    ref.push(fact('上市融資餘額', f0(b.amt) + ' 億', `${b.date}，占上市總市值 ${f2(b.ratio)}%`, b.chg1));
+    ref.push(fact('融資餘額 5 日變化', sgn(b.chg5), '減少代表融資部位被賣出或斷頭'));
+    ref.push(fact('融資餘額 20 日變化', sgn(b.chg20), '回測裡用來觀察「融資有沒有被洗出去」的指標'));
+  } else ref.push(fact('上市融資餘額', '—', '這次沒有抓到證交所的資料'));
+  ref.push(fact('0050 收盤', f2(t.px50), t.px_date, t.px50_chg), fact('00631L 收盤', f2(t.pxL), t.px_date, t.pxL_chg));
+  $('facts-ref').replaceChildren(...ref);
+  $('keep-body').replaceChildren(...keep.slice().reverse().map((k) => tr([k.date, f2(k.rate) + '%', f0(k.call), f2(k.callAmt) + ' 億', f0(k.exe), f2(k.exeAmt) + ' 億'])));
+
   $('history').replaceChildren(...d3.range(n - 1, Math.max(-1, n - 61), -1).map((i) => tr([d.date[i], f0(d.close[i]), pct(d.dd[i]), sgn(d.dist[i]), String(d.lvl[i]), d.on[i] ? '進場' : '出場',
     d.wL[i] + '%', d.w50[i] + '%', d.wC[i] + '%', f2(d.exp[i]), [d.changed[i] ? '訊號變更，隔日調整' : '—', d.changed[i] ? 'flag' : '']], d.changed[i] ? 'hl' : '')));
   $('generated').textContent = new Date(D.generated).toLocaleString('zh-TW', { hour12: false });
 }
+function renderMine() {
+  const z = position(), mine = $('mine-say'); mine.replaceChildren();
+  if (!z) { const a = el('a', '到「試算」填入持股'); a.href = '#sizing'; mine.append('你的部位：還沒填。', a, '，這裡之後會直接顯示你需不需要調整、要買賣幾股。'); return; }
+  mine.append('你的部位：', el('b', z.need ? '需要調整' : '不用動'), `。持股和目標最大差 ${f1(z.drift)} 個百分點（門檻 ${D.drift}）` + (z.need && z.trades.length ? `，照目標要${z.trades.join('、')}。` : '。'));
+}
 
 /* ── 試算 ── */
 function renderSizing() {
-  const t = D.today, add = val('in-add');
-  const cur = { L: val('in-sl') * t.pxL, s50: val('in-s50') * t.px50, cash: val('in-cash') + add }, tot = cur.L + cur.s50 + cur.cash;
+  const t = D.today, z = position();
   $('size-note').textContent = `股數用 ${t.px_date} 收盤價估算（0050 ${f2(t.px50)}、00631L ${f2(t.pxL)}），沒算手續費和證交稅。`;
-  const body = $('size-body'); body.replaceChildren();
-  if (!(tot > 0)) { $('size-say').textContent = '輸入持股後，這裡會告訴你需不需要調整。'; return; }
-  const tgt = { L: t.wL / 100 * tot, s50: t.w50 / 100 * tot, cash: t.wC / 100 * tot };
-  const drift = Math.max(...['L', 's50', 'cash'].map((k) => Math.abs(cur[k] - tgt[k]) / tot * 100));
-  const need = !!t.changed || drift > D.drift;
+  const body = $('size-body'); body.replaceChildren(); renderMine();
+  if (!z) { $('size-say').textContent = '輸入持股後，這裡會告訴你需不需要調整。'; return; }
+  const { cur, tgt, tot, drift, need, add } = z;
   const say = $('size-say'); say.replaceChildren();
   say.append(el('b', need ? '需要調整' : '不用動'), need
     ? (t.changed ? '：目標配置剛變更。' : `：持股和目標最大差 ${f1(drift)} 個百分點，超過 ${D.drift}。`)

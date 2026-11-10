@@ -85,6 +85,56 @@ def fetch(sym, years):
     return {"dates": dates, "close": close, "adj": adj}
 
 
+# ───────────────────────────── 融資資料（只供參考，不影響訊號） ─────────────────────────────
+TWSE = "https://www.twse.com.tw/rwd/zh/marginTrading/"
+TWSE_REF = "https://www.twse.com.tw/dashboard/zh/credit/margin.html"
+
+
+def fetch_json(url, referer=None, tries=2):
+    last = None
+    for attempt in range(tries):
+        try:
+            h = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)", "Accept": "application/json"}
+            if referer:
+                h["Referer"] = referer
+            with urllib.request.urlopen(urllib.request.Request(url, headers=h), timeout=30) as r:
+                return json.loads(r.read().decode("utf-8"))
+        except Exception as e:  # noqa: BLE001  證交所會擋太頻繁的請求，回來的可能不是 JSON
+            last = e
+            time.sleep(5)
+    raise RuntimeError(f"{url} 讀取失敗：{last}")
+
+
+def _iso(d):
+    return f"{d[:4]}-{d[4:6]}-{d[6:8]}"
+
+
+def margin_block(prev):
+    """官方擔保維持率與融資餘額。任何一項抓不到就沿用上一次的值（各自帶著自己的日期）。"""
+    out = dict(prev or {})
+    try:   # 證交所臺股儀表板：全市場擔保維持率、追繳與處分（近 5 個交易日）
+        r = fetch_json(TWSE + "BFIJ3U_TREND?response=json", TWSE_REF)
+        if r.get("stat") == "OK" and r.get("data"):
+            out["keep"] = [{"date": _iso(x["date"]), "rate": x["keepRate"], "call": x["callAccNum"],
+                            "callAmt": round(x["callAmt"] / 1e8, 2), "exe": x["exeAccNum"], "exeAmt": round(x["exeAmt"] / 1e8, 2)}
+                           for x in r["data"]]
+    except Exception as e:  # noqa: BLE001
+        print(f"[警告] 擔保維持率沒有更新：{e}", file=sys.stderr)
+    try:   # 證交所：上市融資餘額（仟元）與上市總市值（億元），近 30 個交易日
+        time.sleep(3)
+        r = fetch_json(TWSE + "MI_MARGN_TREND?response=json", TWSE_REF)
+        rows = [(_iso(x["date"]), x["marginAmt"] / 1e5, x["marketValue"]) for x in r["data"]] if r.get("stat") == "OK" else []
+        if len(rows) >= 21:
+            amt = [x[1] for x in rows]
+            chg = lambda n: round((amt[-1] / amt[-1 - n] - 1) * 100, 1)  # noqa: E731
+            out["bal"] = {"date": rows[-1][0], "amt": round(amt[-1]), "chg1": chg(1), "chg5": chg(5), "chg20": chg(20),
+                          "ratio": round(amt[-1] / rows[-1][2] * 100, 2),
+                          "series": {"date": [x[0] for x in rows], "amt": [round(x[1]) for x in rows]}}
+    except Exception as e:  # noqa: BLE001
+        print(f"[警告] 融資餘額沒有更新：{e}", file=sys.stderr)
+    return out
+
+
 # ───────────────────────────── 規則重播 ─────────────────────────────
 def replay(dates, closes):
     rows, lvl, on, prev = [], 0, True, None
@@ -231,18 +281,28 @@ def main():
     today.update({"vix": round(v[1], 1), "vix_date": v[0], "px50": round(a50[1], 2), "pxL": round(al[1], 2), "px_date": a50[0],
                   "aL": a_l, "a50": 100 - a_l, "bL": 100 if t["on"] else 0, "bC": 0 if t["on"] else 100})
 
+    def day_chg(series, key, d, strict=False):
+        """series 在日期 d（strict 時為 d 之前）最後一筆相對前一筆的漲跌 %。"""
+        xs = [v for x, v in zip(series["dates"], series[key]) if x < d or (x == d and not strict)]
+        return round((xs[-1] / xs[-2] - 1) * 100, 2) if len(xs) >= 2 else None
+
+    today.update({"chg": round((rows[-1]["close"] / rows[-2]["close"] - 1) * 100, 2), "vix_chg": day_chg(vix, "close", t["date"], True),
+                  "px50_chg": day_chg(p50, "adj", t["date"]), "pxL_chg": day_chg(pl, "close", t["date"])})
+    try:
+        with open(OUT, encoding="utf-8") as f:
+            old = json.load(f)
+    except Exception:  # noqa: BLE001
+        old = {}
+
     data = {"generated": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "asof": t["date"],
-            "today": today, "levels": levels, "daily": daily, "drift": int(DRIFT * 100)}
+            "today": today, "levels": levels, "daily": daily, "drift": int(DRIFT * 100), "margin": margin_block(old.get("margin"))}
     try:
         data["bt"] = backtest(rows, p50, pl)
     except Exception as e:  # noqa: BLE001  回測失敗不影響每日訊號：沿用上一次的回測
         print(f"[警告] 回測沒有更新：{e}", file=sys.stderr)
-        try:
-            with open(OUT, encoding="utf-8") as f:
-                data["bt"] = json.load(f)["bt"]
-            data["bt_stale"] = True
-        except Exception:  # noqa: BLE001
-            raise e
+        if "bt" not in old:
+            raise
+        data["bt"], data["bt_stale"] = old["bt"], True
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
