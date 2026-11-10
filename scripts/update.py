@@ -29,9 +29,10 @@ HIGH_WIN, MA_N, BUF, BUCKET, DRIFT = 252, 200, 0.03, 0.5, 0.10
 BUY, SELL, RF = 0.000855, 0.000855 + 0.001, 0.01 / 252   # 手續費 6 折、賣出加證交稅 0.1%、現金年息 1%
 BT_YEARS = 10
 CLEAN_FROM = "2015-09-01"     # Yahoo 的 00631L 在這之前有錯價，回測不使用
-DAILY_KEEP = 500
+DAILY_KEEP = 750
 
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "data.json")
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data")
+OUT = os.path.join(DATA_DIR, "data.json")
 # Yahoo 會對某些 User-Agent 回 429，所以準備幾個輪流試
 UAS = ["Mozilla/5.0", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)", "curl/8.4.0"]
 
@@ -109,29 +110,63 @@ def _iso(d):
     return f"{d[:4]}-{d[4:6]}-{d[6:8]}"
 
 
-def margin_block(prev):
-    """官方擔保維持率與融資餘額。任何一項抓不到就沿用上一次的值（各自帶著自己的日期）。"""
-    out = dict(prev or {})
-    try:   # 證交所臺股儀表板：全市場擔保維持率、追繳與處分（近 5 個交易日）
-        r = fetch_json(TWSE + "BFIJ3U_TREND?response=json", TWSE_REF)
+def _load(name, default):
+    try:
+        with open(os.path.join(DATA_DIR, name), encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:  # noqa: BLE001
+        return default
+
+
+def _save(name, obj):
+    with open(os.path.join(DATA_DIR, name), "w", encoding="utf-8") as f:
+        json.dump(obj, f, ensure_ascii=False, separators=(",", ":"))
+
+
+def _merge(hist, key, rows):
+    """把 rows（dict，含 date）併進以欄位陣列存的歷史，依日期去重排序。"""
+    cols = [c for c in hist if c != key] or [c for c in (rows[0] if rows else {}) if c != key]
+    by = {d: {c: hist[c][i] for c in cols} for i, d in enumerate(hist.get(key, []))}
+    for r in rows:
+        by[r[key]] = {c: r[c] for c in cols}
+    dates = sorted(by)[-2500:]
+    return {key: dates, **{c: [by[d][c] for d in dates] for c in cols}}
+
+
+def margin_block():
+    """官方擔保維持率與融資餘額（只供參考）。歷史累積在 data/*_hist.json；抓不到就用已累積的資料。"""
+    keep = _load("keep_hist.json", {"date": [], "rate": [], "call": [], "exe": []})
+    try:   # 證交所臺股儀表板：全市場擔保維持率、低於 130% 戶數、應處分戶數
+        days = 60 if len(keep["date"]) < 30 else 10
+        r = fetch_json(TWSE + f"BFIJ3U_TREND?response=json&days={days}", TWSE_REF)
         if r.get("stat") == "OK" and r.get("data"):
-            out["keep"] = [{"date": _iso(x["date"]), "rate": x["keepRate"], "call": x["callAccNum"],
-                            "callAmt": round(x["callAmt"] / 1e8, 2), "exe": x["exeAccNum"], "exeAmt": round(x["exeAmt"] / 1e8, 2)}
-                           for x in r["data"]]
+            keep = _merge(keep, "date", [{"date": _iso(x["date"]), "rate": x["keepRate"], "call": x["callAccNum"], "exe": x["exeAccNum"]} for x in r["data"]])
+            _save("keep_hist.json", keep)
     except Exception as e:  # noqa: BLE001
         print(f"[警告] 擔保維持率沒有更新：{e}", file=sys.stderr)
+
+    bal = _load("margin_hist.json", {"date": [], "amt": []})
+    mv = None
     try:   # 證交所：上市融資餘額（仟元）與上市總市值（億元），近 30 個交易日
         time.sleep(3)
         r = fetch_json(TWSE + "MI_MARGN_TREND?response=json", TWSE_REF)
-        rows = [(_iso(x["date"]), x["marginAmt"] / 1e5, x["marketValue"]) for x in r["data"]] if r.get("stat") == "OK" else []
-        if len(rows) >= 21:
-            amt = [x[1] for x in rows]
-            chg = lambda n: round((amt[-1] / amt[-1 - n] - 1) * 100, 1)  # noqa: E731
-            out["bal"] = {"date": rows[-1][0], "amt": round(amt[-1]), "chg1": chg(1), "chg5": chg(5), "chg20": chg(20),
-                          "ratio": round(amt[-1] / rows[-1][2] * 100, 2),
-                          "series": {"date": [x[0] for x in rows], "amt": [round(x[1]) for x in rows]}}
+        if r.get("stat") == "OK" and r.get("data"):
+            if bal["date"] and _iso(r["data"][0]["date"]) > bal["date"][-1]:
+                raise RuntimeError("融資餘額歷史中間有缺口")
+            bal = _merge(bal, "date", [{"date": _iso(x["date"]), "amt": round(x["marginAmt"] / 1e5)} for x in r["data"]])
+            mv = r["data"][-1]["marketValue"]
+            _save("margin_hist.json", bal)
     except Exception as e:  # noqa: BLE001
         print(f"[警告] 融資餘額沒有更新：{e}", file=sys.stderr)
+
+    out = {"keep": {k: v[-750:] for k, v in keep.items()}}
+    amt, dates = bal["amt"], bal["date"]
+    if len(amt) > 21:
+        chg = lambda n: round((amt[-1] / amt[-1 - n] - 1) * 100, 1)  # noqa: E731
+        out["bal"] = {"date": dates[-1], "amt": amt[-1], "chg1": chg(1), "chg5": chg(5), "chg20": chg(20),
+                      "ratio": round(amt[-1] / mv * 100, 2) if mv else None}
+        i0 = max(20, len(amt) - 750)
+        out["m20"] = {"date": dates[i0:], "v": [round((amt[i] / amt[i - 20] - 1) * 100, 1) for i in range(i0, len(amt))]}
     return out
 
 
@@ -247,7 +282,7 @@ def main():
     tw = fetch("^TWII", BT_YEARS + 2.5)
     p50 = fetch("0050.TW", BT_YEARS + 1.6)
     pl = fetch("00631L.TW", BT_YEARS + 1.6)
-    vix = fetch("^VIX", 3)
+    vix = fetch("^VIX", 4.5)
     rows = replay(tw["dates"], tw["close"])
     t = rows[-1]
 
@@ -274,6 +309,12 @@ def main():
         "wL": [round(r["wL"] * 100) for r in keep], "w50": [round(r["w50"] * 100) for r in keep], "wC": [round(r["wC"] * 100) for r in keep],
         "exp": [r["exp"] for r in keep], "changed": [int(r["changed"]) for r in keep],
     }
+    vi, vseries = 0, []
+    for r in keep:                                   # 每個台股交易日收盤時已知的 VIX（美股前一晚收盤）
+        while vi + 1 < len(vix["dates"]) and vix["dates"][vi + 1] < r["date"]:
+            vi += 1
+        vseries.append(round(vix["close"][vi], 1))
+    daily["vix"] = vseries
     v = asof(vix, "close", t["date"], strict=True)      # 台股收盤時已知的美股前一晚收盤
     a50, al = asof(p50, "close", t["date"]), asof(pl, "close", t["date"])
     a_l = round(t["aL"] * 100)
@@ -295,7 +336,7 @@ def main():
         old = {}
 
     data = {"generated": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "asof": t["date"],
-            "today": today, "levels": levels, "daily": daily, "drift": int(DRIFT * 100), "margin": margin_block(old.get("margin"))}
+            "today": today, "levels": levels, "daily": daily, "drift": int(DRIFT * 100), "margin": margin_block()}
     try:
         data["bt"] = backtest(rows, p50, pl)
     except Exception as e:  # noqa: BLE001  回測失敗不影響每日訊號：沿用上一次的回測

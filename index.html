@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#f4f6f8" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0d1217" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f3f5f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a0e13" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="兩桶訊號">
 <title>正二兩桶訊號</title>
@@ -13,278 +13,278 @@
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <style>
-/* 版面：手機優先的 App 外殼。上方是標題與資料日，下方固定分頁列（桌機改到上方），內容一欄。 */
+/* 版面：交易終端風格。數字用等寬字、標籤小而淡；每張卡片只放數據，不放說明文字。 */
 :root {
-  --bg: #f4f6f8; --card: #ffffff; --ink: #0f1720; --mut: #5b6876; --line: #e1e6ec; --soft: #eef1f4;
-  --cL: #e8590c; --c50: #1971c2; --cCash: #98a2ad; --cLadder: #7048e8; --cBlend: #0f1720;
-  --up: #d9363e; --dn: #178a4c; --warn: #9a5b00; --warnbg: #fff4dc; --focus: #1971c2;
-  --r: 14px; --shadow: 0 1px 2px rgba(15, 23, 32, .05);
-  --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", "Segoe UI", sans-serif;
+  --bg: #f3f5f8; --panel: #ffffff; --soft: #edf0f4; --line: #dde3ea; --ink: #0d141c; --mut: #5a6777; --dim: #8a96a5;
+  --cL: #e8590c; --c50: #1c6fd1; --cCash: #9aa5b1; --cLadder: #8a96a5; --cBlend: #0d141c;
+  --zin: #0b8f86; --zout: #6f4fe0; --up: #d92d3a; --dn: #14864a; --act: #b45309; --actbg: #fff1d6; --focus: #1c6fd1;
+  --sans: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Roboto Mono", monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0d1217; --card: #151c24; --ink: #e9eef3; --mut: #93a1b0; --line: #26313d; --soft: #1b242e;
-    --cL: #ff922b; --c50: #4dabf7; --cCash: #5f6d7b; --cLadder: #9775fa; --cBlend: #e9eef3;
-    --up: #ff6b6b; --dn: #51cf66; --warn: #f0b860; --warnbg: #33270f; --focus: #4dabf7;
-    --shadow: none; color-scheme: dark;
+    --bg: #0a0e13; --panel: #111720; --soft: #1a222d; --line: #232c38; --ink: #e6edf3; --mut: #8b98a8; --dim: #5f6b7a;
+    --cL: #ff9f1c; --c50: #3b9eff; --cCash: #4d5868; --cLadder: #6b7787; --cBlend: #e6edf3;
+    --zin: #19c3b9; --zout: #9b7bff; --up: #ff5d5d; --dn: #2fbf71; --act: #ffb648; --actbg: #3a2a0c; --focus: #3b9eff;
+    color-scheme: dark;
   }
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.6 var(--sans); padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
-.wrap { max-width: 880px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-header.top { padding-top: calc(14px + env(safe-area-inset-top, 0px)); padding-bottom: 10px; }
-.top-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-h1 { font-size: 20px; margin: 0; letter-spacing: .02em; }
-.asof { color: var(--mut); font-size: 13px; font-variant-numeric: tabular-nums; }
-h2 { font-size: 16px; margin: 0 0 10px; }
-h3 { font-size: 14px; margin: 20px 0 8px; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--sans); padding-bottom: calc(62px + env(safe-area-inset-bottom, 0px)); }
+.wrap { max-width: 960px; margin: 0 auto; padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px)); }
 p { margin: 0; }
-.note { color: var(--mut); font-size: 13px; margin-top: 8px; }
-.num { font-variant-numeric: tabular-nums; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; box-shadow: var(--shadow); min-width: 0; }
-.stack { display: grid; gap: 12px; min-width: 0; }
-section[data-tab] { display: grid; gap: 12px; padding-top: 6px; min-width: 0; }
-.banner { background: var(--warnbg); color: var(--warn); border-radius: var(--r); padding: 10px 14px; font-size: 14px; }
+.n, table, input { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+[hidden] { display: none !important; }
 
-/* 分頁列 */
-nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--card); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
-.tabs-in { display: grid; grid-template-columns: repeat(5, 1fr); max-width: 880px; margin: 0 auto; }
-.tabs a { display: grid; justify-items: center; gap: 2px; padding: 8px 0 7px; color: var(--mut); text-decoration: none; font-size: 11.5px; -webkit-tap-highlight-color: transparent; }
-.tabs svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+/* 頂列與分頁 */
+header.top { padding-top: calc(12px + env(safe-area-inset-top, 0px)); padding-bottom: 10px; }
+.top-in { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.brand { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.brand b { font-size: 17px; letter-spacing: .04em; }
+.brand span { color: var(--dim); font: 12px var(--mono); white-space: nowrap; }
+.asof { font: 12px var(--mono); color: var(--mut); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; white-space: nowrap; }
+.asof.stale { color: var(--act); border-color: var(--act); }
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--panel); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.tabs-in { display: grid; grid-template-columns: repeat(5, 1fr); max-width: 960px; margin: 0 auto; }
+.tabs a { display: grid; justify-items: center; gap: 2px; padding: 8px 0 7px; color: var(--dim); text-decoration: none; font-size: 11px; -webkit-tap-highlight-color: transparent; }
+.tabs svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .tabs a[aria-current="page"] { color: var(--ink); font-weight: 600; }
-.tabs a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 @media (min-width: 760px) {
-  body { padding-bottom: 40px; }
+  body { padding-bottom: 32px; }
   nav.tabs { position: sticky; top: 0; bottom: auto; border-top: 0; border-bottom: 1px solid var(--line); }
-  .tabs a { grid-auto-flow: column; justify-content: center; align-items: center; gap: 8px; font-size: 14px; padding: 12px 0; }
-  .tabs svg { width: 18px; height: 18px; }
+  .tabs a { grid-auto-flow: column; justify-content: center; align-items: center; gap: 8px; font-size: 13.5px; padding: 11px 0; }
+  .tabs svg { width: 17px; height: 17px; }
   .tabs a[aria-current="page"] { box-shadow: inset 0 -2px 0 var(--ink); }
-  h1 { font-size: 24px; }
 }
 
-/* 目標配置 */
-.alloc { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.alloc-name { display: flex; align-items: center; gap: 6px; color: var(--mut); font-size: 12.5px; white-space: nowrap; }
-.sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; }
-.big { font-size: clamp(34px, 11vw, 60px); line-height: 1.05; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.big small { font-size: .42em; font-weight: 500; color: var(--mut); margin-left: 2px; letter-spacing: 0; }
-.bar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; margin-top: 14px; background: var(--soft); }
-.bar > div { height: 100%; }
-.verdict { font-size: 15px; margin-top: 12px; }
-.verdict b { font-weight: 600; }
-.pill { display: inline-block; padding: 1px 10px; border-radius: 999px; background: var(--soft); font-size: 13px; font-weight: 600; margin-left: 6px; white-space: nowrap; }
-.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-@media (min-width: 620px) { .tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.tile-k { color: var(--mut); font-size: 12.5px; }
-.tile-v { font-size: 24px; font-weight: 700; line-height: 1.25; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
-.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
-.card b { font-weight: 600; font-variant-numeric: tabular-nums; }
-
-/* 判斷依據 */
-.facts { margin: 0; }
-.fact { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid var(--line); align-items: baseline; }
-.fact:last-child { border-bottom: 0; padding-bottom: 0; }
-.fact:first-child { padding-top: 0; }
-.fact-k { font-size: 14px; }
-.fact-v { font-size: 19px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; letter-spacing: -.01em; white-space: nowrap; }
-.fact-v small { font-size: 13px; font-weight: 500; margin-left: 6px; }
-.fact-s { grid-column: 1 / -1; color: var(--mut); font-size: 12.5px; }
-.decide-rule { font-size: 17px; line-height: 1.55; font-weight: 600; text-wrap: balance; }
-.decide-mine { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
-.decide-mine b { font-weight: 700; }
-.decide-mine a { color: inherit; }
-.tag { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: var(--soft); margin-right: 6px; white-space: nowrap; }
-.tag.act { background: var(--warnbg); color: var(--warn); }
-
-/* 表格 */
-.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -16px; padding: 0 16px; }
-table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
-th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; font-size: 14px; }
-th { color: var(--mut); font-weight: 400; font-size: 12.5px; }
-th:first-child, td:first-child { text-align: left; padding-left: 0; }
-tr:last-child td { border-bottom: 0; }
-td.wrap-cell { white-space: normal; min-width: 11em; text-align: left; }
-tr.hl td { font-weight: 600; }
-td.flag { color: var(--warn); }
+/* 區塊 */
+section[data-tab] { display: grid; gap: 10px; padding-top: 10px; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; }
+.lab { color: var(--mut); font-size: 12px; letter-spacing: .04em; }
+.sec { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 8px 2px 0; }
+.sec h2, .card h2 { font-size: 13px; font-weight: 600; color: var(--mut); letter-spacing: .06em; margin: 0; }
+.card h2 { margin-bottom: 10px; }
+.cap { color: var(--dim); font-size: 11.5px; margin-top: 8px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--mut); font-size: 11.5px; }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; flex: none; }
+.ln { display: inline-block; width: 16px; height: 0; border-top: 2px solid var(--ink); flex: none; }
+.ln.ma { border-top-color: var(--mut); } .ln.lv { border-top: 2px dashed var(--mut); }
+.chip { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 5px; font-size: 11.5px; font-weight: 600; background: var(--soft); color: var(--mut); white-space: nowrap; }
+.chip.act { background: var(--actbg); color: var(--act); }
+.chip.in { background: color-mix(in srgb, var(--zin) 18%, transparent); color: var(--zin); }
+.chip.out { background: color-mix(in srgb, var(--zout) 20%, transparent); color: var(--zout); }
 .up { color: var(--up); } .dn { color: var(--dn); }
 
+/* 今日：決策區 */
+.hero { border-left: 3px solid var(--line); }
+.hero.is-act { border-left-color: var(--act); }
+.hero-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.hero-msg { font-size: 14px; font-weight: 600; }
+.alloc { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.alloc-name { display: flex; align-items: center; gap: 6px; color: var(--mut); font-size: 12px; white-space: nowrap; }
+.big { font: 700 clamp(34px, 11vw, 56px)/1.05 var(--mono); letter-spacing: -.03em; }
+.big small { font-size: .4em; font-weight: 500; color: var(--dim); margin-left: 2px; letter-spacing: 0; }
+.bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 12px; background: var(--soft); }
+.bar > div { height: 100%; }
+.kv { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+@media (min-width: 620px) { .kv { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.kv div { display: grid; gap: 1px; }
+.kv b { font: 600 14px var(--mono); }
+.mine { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
+.mine .n { font-size: 13px; color: var(--mut); }
+.mine a { color: var(--focus); text-decoration: none; font-weight: 600; font-size: 13px; }
+.trades { display: flex; gap: 6px; flex-wrap: wrap; flex-basis: 100%; }
+.trade { font: 600 13px var(--mono); border: 1px solid var(--line); border-radius: 6px; padding: 4px 9px; }
+
+/* 指標卡與量尺 */
+.board { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.g-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.g-val { display: flex; align-items: baseline; gap: 8px; margin-top: 4px; }
+.g-val b { font: 700 26px/1.2 var(--mono); letter-spacing: -.02em; }
+.g-val span { font: 500 12.5px var(--mono); }
+.gauge { margin-top: 10px; }
+.g-track { position: relative; height: 8px; border-radius: 4px; background: var(--soft); }
+.g-zone { position: absolute; top: 0; bottom: 0; }
+.g-zone.in { background: var(--zin); } .g-zone.out { background: var(--zout); }
+.g-zone.t1 { opacity: .38; } .g-zone.t2 { opacity: .9; }
+.g-zone.start { border-radius: 4px 0 0 4px; } .g-zone.end { border-radius: 0 4px 4px 0; }
+.g-ref { position: absolute; top: -2px; bottom: -2px; width: 1px; background: var(--mut); }
+.g-mark { position: absolute; top: -5px; width: 3px; height: 18px; border-radius: 2px; background: var(--ink); transform: translateX(-50%); box-shadow: 0 0 0 2px var(--panel); }
+.g-ticks { position: relative; height: 15px; margin-top: 6px; font: 10.5px var(--mono); color: var(--dim); }
+.g-tick { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.g-foot { color: var(--dim); font: 11.5px var(--mono); margin-top: 2px; }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 620px) { .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 900px) { .tiles.six { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.tile { padding: 12px; }
+.tile b { display: block; font: 700 19px/1.3 var(--mono); letter-spacing: -.01em; margin-top: 2px; white-space: nowrap; }
+.tile > span:last-child { font: 11.5px var(--mono); color: var(--dim); }
+
+/* 表格 */
+.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -14px; padding: 0 14px; }
+table { border-collapse: collapse; width: 100%; }
+th, td { padding: 7px 9px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; font-size: 12.5px; }
+th { color: var(--dim); font-weight: 400; font-family: var(--sans); font-size: 11.5px; }
+th:first-child, td:first-child { text-align: left; padding-left: 0; }
+td:first-child { font-family: var(--sans); }
+td.d { font-family: var(--mono); }
+tr:last-child td { border-bottom: 0; }
+tr.hl td { font-weight: 700; }
+td.flag { color: var(--act); font-family: var(--sans); }
+td.zin { color: var(--zin); font-family: var(--mono); font-weight: 700; } td.zout { color: var(--zout); font-family: var(--mono); font-weight: 700; }
+
 /* 圖 */
-.chart { position: relative; min-height: 280px; }
+.chart { position: relative; min-height: 200px; }
 .chart svg { display: block; touch-action: pan-y; }
-.tick { font-size: 11.5px; fill: var(--mut); font-family: var(--sans); font-variant-numeric: tabular-nums; }
-.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--mut); font-size: 12.5px; margin-bottom: 8px; }
-.legend span { display: inline-flex; align-items: center; gap: 6px; }
-.ln { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--ink); flex: none; }
-.ln.ma { border-top-color: var(--mut); } .ln.lv { border-top: 2px dashed var(--mut); }
-.tip { position: absolute; top: 0; left: 0; pointer-events: none; background: var(--card); border: 1px solid var(--line); box-shadow: 0 6px 20px rgba(0, 0, 0, .14); border-radius: 10px; padding: 8px 10px; font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; z-index: 5; }
-.tip-t { font-weight: 600; margin-bottom: 2px; }
+.tick { font: 10.5px var(--mono); fill: var(--dim); }
+.tip { position: absolute; top: 0; left: 0; pointer-events: none; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 6px 20px rgba(0, 0, 0, .18); border-radius: 8px; padding: 7px 9px; font: 11.5px var(--mono); white-space: nowrap; z-index: 5; }
+.tip-t { font-weight: 700; margin-bottom: 2px; }
 .tip-r { display: flex; justify-content: space-between; gap: 14px; }
-.tip-r span:first-child { color: var(--mut); }
-.seg { display: inline-flex; background: var(--soft); border-radius: 10px; padding: 3px; gap: 2px; }
-.seg button { border: 0; background: transparent; color: var(--mut); font: inherit; font-size: 13px; padding: 5px 12px; border-radius: 8px; cursor: pointer; }
-.seg button[aria-pressed="true"] { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); }
-.head-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
-.head-row h2 { margin: 0; }
+.tip-r span:first-child { color: var(--mut); font-family: var(--sans); }
+.seg { display: inline-flex; background: var(--soft); border-radius: 7px; padding: 2px; gap: 2px; }
+.seg button { border: 0; background: transparent; color: var(--mut); font: 12px var(--mono); padding: 4px 10px; border-radius: 5px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--panel); color: var(--ink); font-weight: 700; }
+.zc-head { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.zc-head h2 { margin: 0; }
+.zc-head b { font: 700 18px var(--mono); margin-left: auto; }
+.zgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 430px), 1fr)); gap: 10px; }
 
 /* 輸入 */
-.inputs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 10px 0 14px; }
-@media (min-width: 620px) { .inputs { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.field { display: grid; gap: 4px; color: var(--mut); font-size: 12.5px; min-width: 0; }
-.field input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); font: inherit; font-size: 16px; text-align: right; font-variant-numeric: tabular-nums; }
-.say { font-size: 17px; line-height: 1.55; text-wrap: balance; }
-.say b { font-weight: 700; font-variant-numeric: tabular-nums; }
-.grow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-@media (min-width: 620px) { .grow { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.grow-v { font-size: 24px; font-weight: 700; line-height: 1.25; font-variant-numeric: tabular-nums; }
-ol.steps, ul.rules { margin: 0; padding-left: 1.3em; }
-ol.steps li, ul.rules li { margin: 6px 0; }
+.inputs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 620px) { .inputs.four { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.field { display: grid; gap: 3px; color: var(--mut); font-size: 11.5px; min-width: 0; }
+.field input { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--ink); font-size: 16px; text-align: right; }
+.verdict { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; margin: 12px 0; }
+.verdict .n { font-size: 13px; color: var(--mut); }
+.headline { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; margin: 12px 0; }
+.headline b { font: 700 30px/1.1 var(--mono); letter-spacing: -.02em; }
+.headline span { color: var(--mut); font-size: 12.5px; }
+ol.steps, ul.rules { margin: 0; padding-left: 1.2em; font-size: 13.5px; }
+ol.steps li, ul.rules li { margin: 5px 0; }
 #loading { color: var(--mut); padding: 40px 0; text-align: center; }
-[hidden] { display: none !important; }
-@media (prefers-reduced-motion: no-preference) { .bar > div { transition: width .5s ease; } }
+@media (prefers-reduced-motion: no-preference) { .bar > div { transition: width .4s ease; } }
 </style>
 </head>
 <body>
-<header class="top wrap">
-  <div class="top-row"><h1>正二兩桶訊號</h1><span class="asof" id="asof"></span></div>
-</header>
+<header class="top"><div class="wrap top-in">
+  <div class="brand"><b>兩桶訊號</b><span>00631L · 0050</span></div>
+  <div class="asof" id="asof">—</div>
+</div></header>
 
-<nav class="tabs" aria-label="分頁">
-  <div class="tabs-in">
-    <a href="#today" data-go="today"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg>今日</a>
-    <a href="#sizing" data-go="sizing"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17" rx="2.5"/><path d="M8.5 8h7M8.5 12.5h2M13.5 12.5h2M8.5 16.5h2M13.5 16.5h2"/></svg>試算</a>
-    <a href="#trend" data-go="trend"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 17.5l5.5-6 4 3.5 7.5-8.5"/><path d="M15.5 6.5h5v5"/></svg>走勢</a>
-    <a href="#backtest" data-go="backtest"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>回測</a>
-    <a href="#rules" data-go="rules"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h9l3.5 3.5v11.5H6z"/><path d="M9 12h6M9 15.5h6"/></svg>規則</a>
-  </div>
-</nav>
+<nav class="tabs" aria-label="分頁"><div class="tabs-in">
+  <a href="#today" data-go="today"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg>今日</a>
+  <a href="#trend" data-go="trend"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 17.5l5.5-6 4 3.5 7.5-8.5"/><path d="M15.5 6.5h5v5"/></svg>指標</a>
+  <a href="#sizing" data-go="sizing"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17" rx="2.5"/><path d="M8.5 8h7M8.5 12.5h2M13.5 12.5h2M8.5 16.5h2M13.5 16.5h2"/></svg>試算</a>
+  <a href="#backtest" data-go="backtest"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>回測</a>
+  <a href="#rules" data-go="rules"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h9l3.5 3.5v11.5H6z"/><path d="M9 12h6M9 15.5h6"/></svg>規則</a>
+</div></nav>
 
 <main class="wrap">
-  <div id="loading">讀取資料中…</div>
-  <div class="banner" id="stale" hidden></div>
+  <div id="loading">讀取中…</div>
 
-  <!-- 今日：今天要不要下單 -->
+  <!-- 今日 -->
   <section data-tab="today" hidden>
-    <div class="card" id="decide">
-      <h2>今天要不要下單</h2>
-      <p class="decide-rule" id="rule-say">—</p>
-      <p class="decide-mine" id="mine-say">—</p>
-      <p class="note">回測假設在調整日的收盤前（13:20 到 13:30）成交。改成隔天開盤或當天盤後定價，近 10 年的年化報酬差不到 1.1 個百分點。</p>
-    </div>
-    <div class="card" id="alloc">
-      <h2>目標配置（占總資金）</h2>
+    <div class="card hero" id="hero">
+      <div class="hero-top"><span class="chip" id="sig-chip">—</span><span class="hero-msg" id="sig-msg"></span></div>
       <div class="alloc">
-        <div><div class="alloc-name"><i class="sw" style="background:var(--cL)"></i>00631L 正二</div><div class="big"><span id="wL">—</span><small>%</small></div></div>
+        <div><div class="alloc-name"><i class="sw" style="background:var(--cL)"></i>00631L</div><div class="big"><span id="wL">—</span><small>%</small></div></div>
         <div><div class="alloc-name"><i class="sw" style="background:var(--c50)"></i>0050</div><div class="big"><span id="w50">—</span><small>%</small></div></div>
         <div><div class="alloc-name"><i class="sw" style="background:var(--cCash)"></i>現金</div><div class="big"><span id="wC">—</span><small>%</small></div></div>
       </div>
-      <div class="bar" id="allocbar" role="img" aria-label="目標配置比例條"></div>
-      <p class="note">合計曝險 <b id="exp">—</b> 倍（00631L 算 2 倍、0050 算 1 倍）。上次訊號變更：<span class="num" id="last-chg">—</span>。</p>
-    </div>
-    <div class="card" id="facts-rule-card">
-      <h2>規則用到的數據</h2>
-      <div class="facts" id="facts-rule"></div>
-      <h3>下一個觸發價位</h3>
-      <div class="scroll"><table><thead><tr><th>加權指數收在這裡時</th><th>價位</th><th>距收盤</th></tr></thead><tbody id="levels"></tbody></table></div>
-      <p class="note">訊號只看收盤，盤中碰到不算。價位會隨一年高點與 200 日線每天移動。</p>
-    </div>
-    <div class="card" id="facts-ref-card">
-      <h2>參考數據（不在規則內）</h2>
-      <div class="facts" id="facts-ref"></div>
-      <h3>官方擔保維持率，近 5 個交易日</h3>
-      <div class="scroll"><table><thead><tr><th>日期</th><th>全市場擔保維持率</th><th>低於 130% 戶數</th><th>通知補繳</th><th>應處分戶數</th><th>應處分金額</th></tr></thead><tbody id="keep-body"></tbody></table></div>
-      <p class="note">擔保維持率與融資餘額是證交所的官方數字，通常在交易日晚上公布，所以日期可能比指數晚一天。官方維持率是全市場整戶合併計算，和過去民間推估的「大盤融資維持率」算法不同，舊的 130% 到 140% 門檻不能直接套用。</p>
-      <p class="note">回測（2001 年起）：加權指數回落 20% 時，融資餘額 20 日內減少 5% 以上的 6 次，一年後全部上漲；沒有減少這麼多的 2 次，一年後都下跌。樣本只有 8 次，而且把它寫進規則後績效幾乎沒變，所以只列出來當參考。</p>
-    </div>
-    <div class="two">
-      <div class="card">
-        <h2>逆勢桶（資金一半）<span class="pill" id="lvlword">—</span></h2>
-        <p>桶內 00631L <b id="aL">—</b>%、0050 <b id="a50">—</b>%</p>
-        <p class="note">平時全部 0050。加權指數從一年高點回落 10%、20%、30%，桶內 30%、60%、100% 換成 00631L。只加不減，創一年新高才全部換回 0050。</p>
+      <div class="bar" id="allocbar" role="img" aria-label="目標配置比例"></div>
+      <div class="kv">
+        <div><span class="lab">曝險</span><b id="exp">—</b></div>
+        <div><span class="lab">上次變更</span><b id="last-chg">—</b></div>
+        <div><span class="lab">逆勢桶</span><b id="lvlword">—</b></div>
+        <div><span class="lab">順勢桶</span><b id="onword">—</b></div>
       </div>
-      <div class="card">
-        <h2>順勢桶（資金一半）<span class="pill" id="onword">—</span></h2>
-        <p>桶內 00631L <b id="bL">—</b>%、現金 <b id="bC">—</b>%</p>
-        <p class="note">加權指數高於 200 日線 3% 全部持有 00631L，低於 200 日線 3% 全部轉現金，中間維持原狀。</p>
-      </div>
+    </div>
+    <div class="card mine" id="mine"></div>
+
+    <div class="sec"><h2>指標</h2><div class="legend"><span><i class="sw" style="background:var(--zin)"></i>偏進場的極端</span><span><i class="sw" style="background:var(--zout)"></i>過熱</span></div></div>
+    <div class="board" id="board"></div>
+    <div class="tiles six" id="tiles"></div>
+
+    <div class="card">
+      <h2>下一個觸發價位</h2>
+      <div class="scroll"><table><thead><tr><th>事件</th><th>加權指數</th><th>距收盤</th></tr></thead><tbody id="levels"></tbody></table></div>
+    </div>
+    <div class="card">
+      <h2>官方信用交易，近 5 日</h2>
+      <div class="scroll"><table><thead><tr><th>日期</th><th>擔保維持率</th><th>低於 130% 戶數</th><th>應處分戶數</th></tr></thead><tbody id="keep-body"></tbody></table></div>
+    </div>
+  </section>
+
+  <!-- 指標 -->
+  <section data-tab="trend" hidden>
+    <div class="card">
+      <div class="zc-head"><h2>加權指數</h2>
+        <div class="seg" role="group" aria-label="期間" style="margin-left:auto"><button type="button" data-range="126">6M</button><button type="button" data-range="252">1Y</button><button type="button" data-range="750">3Y</button></div></div>
+      <div class="legend" style="margin-bottom:8px"><span><i class="ln"></i>收盤</span><span><i class="ln ma"></i>200 日線</span><span><i class="ln lv"></i>觸發價位</span><span><i class="sw" style="background:var(--cL);opacity:.6"></i>目標曝險</span></div>
+      <div class="chart" id="price-chart" style="min-height:300px"></div>
+    </div>
+    <div class="sec"><h2>極端值</h2><div class="legend"><span><i class="sw" style="background:var(--zin)"></i>偏進場的極端</span><span><i class="sw" style="background:var(--zout)"></i>過熱</span></div></div>
+    <div class="zgrid" id="zcharts"></div>
+    <p class="cap" id="z-cap"></p>
+    <div class="card">
+      <h2>每日紀錄</h2>
+      <div class="scroll"><table><thead><tr><th>日期</th><th>收盤</th><th>距高點</th><th>距 200 日線</th><th>VIX</th><th>逆勢階</th><th>順勢</th><th>00631L</th><th>0050</th><th>現金</th><th>曝險</th><th>動作</th></tr></thead><tbody id="history"></tbody></table></div>
     </div>
   </section>
 
   <!-- 試算 -->
   <section data-tab="sizing" hidden>
     <div class="card">
-      <h2>部位試算</h2>
-      <p class="note" style="margin-top:0">填入目前持股與現金。每個月新存的錢填在「這次新加入的資金」。數字只存在這台裝置的瀏覽器，不會上傳。</p>
-      <div class="inputs">
+      <h2>我的部位</h2>
+      <div class="inputs four">
         <label class="field" for="in-s50">0050 股數<input id="in-s50" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></label>
         <label class="field" for="in-sl">00631L 股數<input id="in-sl" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></label>
-        <label class="field" for="in-cash">現金（元）<input id="in-cash" type="number" min="0" step="1000" inputmode="numeric" placeholder="0"></label>
-        <label class="field" for="in-add">這次新加入的資金<input id="in-add" type="number" min="0" step="1000" inputmode="numeric" placeholder="0"></label>
+        <label class="field" for="in-cash">現金<input id="in-cash" type="number" min="0" step="1000" inputmode="numeric" placeholder="0"></label>
+        <label class="field" for="in-add">本次新資金<input id="in-add" type="number" min="0" step="1000" inputmode="numeric" placeholder="0"></label>
       </div>
-      <p class="say" id="size-say">輸入持股後，這裡會告訴你需不需要調整。</p>
-      <div class="scroll" style="margin-top:12px"><table><thead><tr><th>標的</th><th>目前</th><th>占比</th><th>目標</th><th>占比</th><th>要調整</th></tr></thead><tbody id="size-body"></tbody></table></div>
-      <p class="note" id="size-note"></p>
-    </div>
-    <div class="card">
-      <h2>怎麼操作</h2>
-      <ol class="steps">
-        <li>收盤後看「今日」的目標配置。大部分日子和前一天一樣，不用動。</li>
-        <li>在這一頁填入持股。結論是「不用動」就結束。</li>
-        <li>結論是「需要調整」時，照表格的買賣股數，下一個交易日調回目標比例。</li>
-        <li>每個月存進來的錢填在「這次新加入的資金」，用它去買低於目標的標的，通常不需要賣出。</li>
-      </ol>
-    </div>
-  </section>
-
-  <!-- 走勢 -->
-  <section data-tab="trend" hidden>
-    <div class="card">
-      <div class="head-row"><h2>加權指數與觸發線</h2>
-        <div class="seg" role="group" aria-label="期間"><button type="button" data-range="126">6 個月</button><button type="button" data-range="252">1 年</button><button type="button" data-range="500">2 年</button></div></div>
-      <div class="legend"><span><i class="ln"></i>收盤</span><span><i class="ln ma"></i>200 日線</span><span><i class="ln lv"></i>觸發價位</span><span><i class="sw" style="background:var(--cL);opacity:.55"></i>下方：目標曝險（倍）</span></div>
-      <div class="chart" id="price-chart"></div>
-    </div>
-    <div class="card">
-      <h2>每日歷史</h2>
-      <p class="note" style="margin:0 0 6px">最近 60 個交易日，每一天都列出，包含沒有動作的日子。</p>
-      <div class="scroll"><table><thead><tr><th>日期</th><th>收盤</th><th>距高點</th><th>距 200 日線</th><th>逆勢階</th><th>順勢桶</th><th>00631L</th><th>0050</th><th>現金</th><th>曝險</th><th>動作</th></tr></thead><tbody id="history"></tbody></table></div>
+      <div class="verdict"><span class="chip" id="size-chip">—</span><span class="n" id="size-meta"></span></div>
+      <div class="scroll"><table><thead><tr><th>標的</th><th>目前</th><th>占比</th><th>目標</th><th>占比</th><th>調整</th></tr></thead><tbody id="size-body"></tbody></table></div>
+      <p class="cap" id="size-note"></p>
     </div>
   </section>
 
   <!-- 回測 -->
   <section data-tab="backtest" hidden>
     <div class="card">
-      <h2>本金的成長：近 10 年回測</h2>
-      <p class="say" id="bt-say">—</p>
-      <div class="inputs" style="grid-template-columns:repeat(2,minmax(0,1fr))">
-        <label class="field" for="in-principal">期初本金（元）<input id="in-principal" type="number" min="1" step="10000" inputmode="numeric"></label>
-        <label class="field" for="in-monthly">每月再存入（元）<input id="in-monthly" type="number" min="0" step="1000" inputmode="numeric"></label>
+      <h2>本金成長，近 10 年</h2>
+      <div class="inputs">
+        <label class="field" for="in-principal">期初本金<input id="in-principal" type="number" min="1" step="10000" inputmode="numeric"></label>
+        <label class="field" for="in-monthly">每月存入<input id="in-monthly" type="number" min="0" step="1000" inputmode="numeric"></label>
       </div>
-      <div class="grow" id="grow"></div>
-      <p class="note">回測期間 <span class="num" id="bt-range">—</span>，每天自動往後滾動。0050 與 00631L 都用真實還原價。假設本金期初投入，之後每個月底存入固定金額、照當時的目標比例買進，不提領。已扣手續費（6 折）與證交稅，訊號隔一個交易日收盤成交，沒算股利稅。這是歷史回測，不代表未來。</p>
+      <div class="headline"><b id="bt-final">—</b><span id="bt-inv">—</span></div>
+      <div class="tiles" id="grow" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr))"></div>
+      <p class="cap" id="bt-range"></p>
     </div>
     <div class="card">
-      <h2>資產每個月的金額</h2>
-      <div class="legend" id="eq-legend"></div>
-      <div class="chart" id="eq-chart"></div>
+      <h2>資產走勢</h2>
+      <div class="legend" id="eq-legend" style="margin-bottom:8px"></div>
+      <div class="chart" id="eq-chart" style="min-height:260px"></div>
     </div>
     <div class="card">
-      <h2>各年底的資產</h2>
-      <div class="scroll"><table><thead><tr><th>時間</th><th>累計投入</th><th>0050 持有</th><th>00631L 持有</th><th>純逆勢</th><th>混合</th></tr></thead><tbody id="yearend"></tbody></table></div>
+      <h2>績效</h2>
+      <div class="scroll"><table><thead><tr><th>做法</th><th>年化</th><th>最大回撤</th><th>最差年度</th><th>倍數</th></tr></thead><tbody id="bt-stats"></tbody></table></div>
     </div>
     <div class="card">
-      <h2>績效與各年度報酬</h2>
-      <div class="scroll"><table><thead><tr><th>做法</th><th>年化報酬</th><th>最大回撤</th><th>最差年度</th><th>成長倍數</th></tr></thead><tbody id="bt-stats"></tbody></table></div>
-      <h3>各年度報酬（紅漲綠跌）</h3>
-      <div class="scroll"><table><thead><tr><th>年度</th><th>0050 持有</th><th>00631L 持有</th><th>純逆勢</th><th>混合</th></tr></thead><tbody id="yearly"></tbody></table></div>
-      <p class="note">第一列和最後一列不是完整年度。這 10 年訊號共變更 <span class="num" id="bt-changes">—</span> 次。</p>
+      <h2>各年底資產</h2>
+      <div class="scroll"><table><thead><tr><th>時間</th><th>累計投入</th><th>0050</th><th>00631L</th><th>純逆勢</th><th>混合</th></tr></thead><tbody id="yearend"></tbody></table></div>
     </div>
     <div class="card">
-      <h2>壓力測試：2000 年至今</h2>
-      <p class="note" style="margin:0 0 10px">近 10 年幾乎都是多頭，所以另外往回算到 2000 年，看遇到 2000 和 2008 那種長空頭會怎樣。這一段是固定結果（算到 <span class="num" id="stress-asof">—</span>），不會每天更新。2015 年 9 月以前的 00631L 是合成的，2009 年以前的 0050 用加權指數加 3% 股利近似。</p>
-      <div class="scroll"><table><thead><tr><th>做法</th><th>2000 起年化</th><th>最大回撤</th><th>2000–2012 年化</th><th>最大回撤</th><th>2009 起年化</th><th>最大回撤</th></tr></thead><tbody id="stress-stats"></tbody></table></div>
-      <h3>同一筆本金從 2000 年起的金額（對數刻度，不含每月存入）</h3>
-      <div class="chart" id="stress-chart"></div>
+      <h2>各年度報酬</h2>
+      <div class="scroll"><table><thead><tr><th>年度</th><th>0050</th><th>00631L</th><th>純逆勢</th><th>混合</th></tr></thead><tbody id="yearly"></tbody></table></div>
+    </div>
+    <div class="card">
+      <h2>壓力測試，2000 年起</h2>
+      <div class="scroll"><table><thead><tr><th>做法</th><th>2000 起年化</th><th>回撤</th><th>2000–12 年化</th><th>回撤</th><th>2009 起年化</th><th>回撤</th></tr></thead><tbody id="stress-stats"></tbody></table></div>
+      <div class="chart" id="stress-chart" style="min-height:260px;margin-top:12px"></div>
+      <p class="cap" id="stress-cap"></p>
     </div>
   </section>
 
@@ -293,34 +293,30 @@ ol.steps li, ul.rules li { margin: 6px 0; }
     <div class="card">
       <h2>規則</h2>
       <ul class="rules">
-        <li>資金分兩桶，各一半。訊號變更時，兩桶一起調回目標比例。</li>
-        <li>逆勢桶：平時 0050；加權指數從一年高點（252 個交易日）回落 10%、20%、30%，桶內 30%、60%、100% 換成 00631L；創一年新高全部換回 0050。</li>
-        <li>順勢桶：加權指數高於 200 日線 3% 持有 00631L；低於 200 日線 3% 轉現金；中間維持原狀。</li>
-        <li>訊號只看收盤，下一個交易日調整。訊號沒變時，持股偏離目標超過 10 個百分點才再平衡。</li>
+        <li>資金分兩桶各一半；訊號變更時一起調回目標比例。</li>
+        <li>逆勢桶：平時 0050。加權指數距一年高點 −10% / −20% / −30%，桶內 30% / 60% / 100% 換 00631L。創一年新高全部換回。</li>
+        <li>順勢桶：加權指數高於 200 日線 3% 持有 00631L，低於 3% 轉現金。</li>
+        <li>只看收盤，下一個交易日收盤前調整。訊號沒變時，偏離目標超過 10 個百分點才再平衡。</li>
       </ul>
     </div>
     <div class="card">
-      <h2>賺錢的來源</h2>
+      <h2>操作</h2>
+      <ol class="steps">
+        <li>收盤後看「今日」。</li>
+        <li>「我的部位」顯示不用動就結束。</li>
+        <li>顯示需要調整時，隔天收盤前照股數下單。</li>
+        <li>每月新存的錢填在「試算」的本次新資金。</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h2>注意</h2>
       <ul class="rules">
-        <li>市場本身上漲：占報酬的大部分，不是規則的功勞。</li>
-        <li>槓桿：平均約 1.4 倍曝險，放大報酬，也放大回撤。</li>
-        <li>擇時：順勢桶在趨勢向上、波動低時才持有 00631L；逆勢桶在大跌後加碼，賺反彈。</li>
+        <li>不是投資建議；回測不代表未來。</li>
+        <li>壓力測試最大回撤約 68%（2000–2008）。</li>
+        <li>VIX、融資餘額、擔保維持率與極端值統計只供參考，不影響訊號。</li>
+        <li>2015/9 以前的 00631L 為合成資料；00631L 的額外報酬近年已縮小。</li>
       </ul>
-      <p class="note">不賺的情況：市場長期不漲、跌了不反彈、在 200 日線上下來回盤整。</p>
-    </div>
-    <div class="card">
-      <h2>注意事項</h2>
-      <ul class="rules">
-        <li>這個網站只是把固定規則算出來，不是投資建議。回測是歷史結果，不代表未來。</li>
-        <li>壓力測試裡這套規則的最大回撤約 68%（2000 到 2008 年）。</li>
-        <li>00631L 相對「單純每日兩倍加權指數」的額外報酬近幾年已大幅縮水，未來報酬可能不如回測。</li>
-        <li>融資餘額、官方擔保維持率和 VIX 都不在規則內，只列在「今日」頁當參考。融資餘額減幅當加碼條件回測過，對績效幾乎沒有影響。</li>
-      </ul>
-    </div>
-    <div class="card">
-      <h2>資料與更新</h2>
-      <p>價格來自 Yahoo Finance（^TWII、^VIX、0050.TW、00631L.TW），擔保維持率與融資餘額來自證交所臺股儀表板。每個交易日收盤後自動更新，另外在晚上和隔天早上各補跑一次。</p>
-      <p class="note">這次資料產生於 <span class="num" id="generated">—</span>。持股與本金等輸入只存在你這台裝置的瀏覽器。</p>
+      <p class="cap">資料：Yahoo Finance、證交所臺股儀表板。產生於 <span class="n" id="generated">—</span>。輸入的持股與本金只存在本機瀏覽器。</p>
     </div>
   </section>
 </main>
@@ -330,21 +326,48 @@ ol.steps li, ul.rules li { margin: 6px 0; }
 const $ = (id) => document.getElementById(id);
 const f0 = d3.format(',.0f'), f1 = d3.format('.1f'), f2 = d3.format('.2f');
 const pct = (v) => f1(v) + '%', sgn = (v) => (v > 0 ? '+' : '') + f1(v) + '%';
+const sg2 = (v, u = '%') => (v > 0 ? '+' : '') + f2(v) + u;
 const money = (v) => { const a = Math.abs(v); return !a ? '0' : a >= 1e8 ? f2(v / 1e8) + ' 億' : a >= 1e6 ? f0(v / 1e4) + ' 萬' : a >= 1e4 ? d3.format(',.1~f')(v / 1e4) + ' 萬' : f0(v) + ' 元'; };
-const SERIES = ['s0050', 'sL', 'ladder', 'blend'], NAMES = ['0050 持有', '00631L 持有', '純逆勢階梯', '混合（兩桶）'];
+const md = (s) => s.slice(5).replace('-', '/');
+const SERIES = ['s0050', 'sL', 'ladder', 'blend'], NAMES = ['0050 持有', '00631L 持有', '純逆勢', '混合'];
 const COLORS = ['var(--c50)', 'var(--cL)', 'var(--cLadder)', 'var(--cBlend)'];
-let D = null, S = null, range = 252;
+let D = null, S = null, E = null, range = 252;
 
-/* 這台裝置記住的輸入 */
 const store = { get(k, d) { try { const v = JSON.parse(localStorage.getItem('z2') || '{}')[k]; return v == null ? d : v; } catch (e) { return d; } },
-  set(k, v) { try { const o = JSON.parse(localStorage.getItem('z2') || '{}'); o[k] = v; localStorage.setItem('z2', JSON.stringify(o)); } catch (e) { /* 私密模式等情況：不記住也能用 */ } } };
+  set(k, v) { try { const o = JSON.parse(localStorage.getItem('z2') || '{}'); o[k] = v; localStorage.setItem('z2', JSON.stringify(o)); } catch (e) { /* 不能儲存時照常運作 */ } } };
 const val = (id) => Math.max(0, +$(id).value || 0);
-
 const el = (tag, text, cls) => { const e = document.createElement(tag); if (text != null) e.textContent = text; if (cls) e.className = cls; return e; };
 const tr = (cells, cls) => { const r = el('tr', null, cls); cells.forEach((c) => r.append(Array.isArray(c) ? el('td', c[0], c[1]) : el('td', c))); return r; };
 const tone = (v) => (v > 0 ? 'up' : v < 0 ? 'dn' : '');
 
-/* ── 部位計算（今日頁與試算頁共用） ── */
+/* ── 極端區 ── */
+const zoneOf = (key, v) => { let hit = null; ((E && E.ind[key] && E.ind[key].zones) || []).forEach((z) => { if (z.op === '<=' ? v <= z.v : v >= z.v) hit = z; }); return hit; };
+const num = (v) => String(v).replace('-', '−');
+const thr = (z, unit) => (z.op === '<=' ? '≤ ' : '≥ ') + (z.v > 0 && unit === '%' ? '+' : '') + num(z.v) + unit;
+const zchip = (key, v) => { const z = zoneOf(key, v); return el('span', z ? z.label : '正常', 'chip' + (z ? ' ' + z.side : '')); };
+
+function gauge(key, v) {
+  const c = E && E.ind[key], g = el('div', null, 'gauge'); if (!c) return g;
+  const [d0, d1] = c.domain, pos = (x) => Math.max(0, Math.min(100, (x - d0) / (d1 - d0) * 100));
+  const track = el('div', null, 'g-track'), ticks = el('div', null, 'g-ticks');
+  const tick = (x, text) => { const t = el('span', text, 'g-tick'), p = pos(x); t.style.left = p + '%'; if (p < 8) t.style.transform = 'none'; if (p > 92) t.style.transform = 'translateX(-100%)'; ticks.append(t); };
+  const zone = (side, tier, a, b, edge) => { const s = el('div', null, `g-zone ${side} ${tier} ${edge}`); s.style.left = pos(a) + '%'; s.style.width = pos(b) - pos(a) + '%'; track.append(s); };
+  const lows = c.zones.filter((z) => z.op === '<=').sort((a, b) => a.v - b.v), highs = c.zones.filter((z) => z.op === '>=').sort((a, b) => a.v - b.v);
+  lows.forEach((z, i) => { zone(z.side, i === 0 && lows.length > 1 ? 't2' : 't1', i ? lows[i - 1].v : d0, z.v, i ? '' : 'start'); tick(z.v, num(z.v)); });
+  highs.forEach((z, i) => { const last = i === highs.length - 1; zone(z.side, last && highs.length > 1 ? 't2' : 't1', z.v, last ? d1 : highs[i + 1].v, last ? 'end' : ''); tick(z.v, (z.v > 0 && c.unit === '%' ? '+' : '') + z.v); });
+  (c.refs || []).forEach((r) => { const s = el('div', null, 'g-ref'); s.style.left = pos(r.v) + '%'; track.append(s); tick(r.v, `${r.v} ${r.label}`); });
+  const m = el('div', null, 'g-mark'); m.style.left = pos(v) + '%'; track.append(m);
+  g.append(track, ticks); return g;
+}
+function gcard(key, name, v, text, chg, foot) {
+  const c = el('div', null, 'card'), h = el('div', null, 'g-head'), vv = el('div', null, 'g-val');
+  h.append(el('span', name, 'lab'), (E && E.ind[key] && E.ind[key].zones.length) ? zchip(key, v) : el('span'));
+  vv.append(el('b', text)); if (chg) vv.append(el('span', chg[0], tone(chg[1])));
+  c.append(h, vv, gauge(key, v), el('div', foot, 'g-foot')); return c;
+}
+const tile = (name, text, chg, sub) => { const c = el('div', null, 'card tile'), s = el('span'); if (chg != null) s.append(el('span', sg2(chg), tone(chg)), sub ? ' · ' : ''); if (sub) s.append(sub); c.append(el('span', name, 'lab'), el('b', text), s); return c; };
+
+/* ── 部位計算 ── */
 function position() {
   const t = D.today, add = val('in-add');
   const cur = { L: val('in-sl') * t.pxL, s50: val('in-s50') * t.px50, cash: val('in-cash') + add }, tot = cur.L + cur.s50 + cur.cash;
@@ -355,87 +378,61 @@ function position() {
   const trades = [['L', '00631L', t.pxL], ['s50', '0050', t.px50]].filter(([k, , px]) => sh(k, px) > 0).map(([k, name, px]) => `${tgt[k] >= cur[k] ? '買' : '賣'} ${name} ${f0(sh(k, px))} 股`);
   return { t, add, cur, tgt, tot, drift, need: !!t.changed || drift > D.drift, trades };
 }
+function renderMine() {
+  const z = position(), m = $('mine'); m.replaceChildren(el('span', '我的部位', 'lab'));
+  if (!z) { const a = el('a', '填入持股 →'); a.href = '#sizing'; m.append(a); return; }
+  m.append(el('span', z.need ? '需要調整' : '不用動', 'chip' + (z.need ? ' act' : '')), el('span', `偏離 ${f1(z.drift)} / 門檻 ${D.drift}`, 'n'));
+  if (z.need && z.trades.length) { const w = el('div', null, 'trades'); z.trades.forEach((x) => w.append(el('span', x, 'trade'))); m.append(w); }
+}
 
-/* ── 今日：今天要不要下單 ── */
-const chgEl = (v, unit = '%') => { const s = el('small', v == null ? '' : (v > 0 ? '+' : '') + f2(v) + unit, tone(v)); return s; };
-const fact = (k, v, sub, chg) => { const r = el('div', null, 'fact'); const vv = el('div', v, 'fact-v'); if (chg != null) vv.append(chgEl(chg)); r.append(el('div', k, 'fact-k'), vv); if (sub) r.append(el('div', sub, 'fact-s')); return r; };
+/* ── 今日 ── */
 function renderToday() {
-  const t = D.today, d = D.daily, n = d.date.length, M = D.margin || {};
-  $('asof').textContent = `資料日 ${t.date} 收盤`;
+  const t = D.today, d = D.daily, n = d.date.length, M = D.margin || {}, K = M.keep || { date: [] }, kn = K.date.length;
   const days = Math.floor((Date.now() - new Date(t.date + 'T13:30:00+08:00').getTime()) / 864e5);
-  $('stale').hidden = days < 5;
-  if (days >= 5) $('stale').textContent = `資料已經 ${days} 天沒有更新，目前顯示的是 ${t.date} 的收盤。若不是連續假期，可能是自動更新出了問題。`;
-  [['wL', f0], ['w50', f0], ['wC', f0], ['aL', f0], ['a50', f0], ['bL', f0], ['bC', f0], ['exp', f2]].forEach(([k, f]) => { $(k).textContent = f(t[k]); });
-  $('lvlword').textContent = t.lvl ? `第 ${t.lvl} 階` : '未觸發'; $('onword').textContent = t.on ? '進場' : '出場';
+  $('asof').textContent = `${md(t.date)} 收盤` + (days >= 5 ? ` · ${days} 天未更新` : ''); $('asof').classList.toggle('stale', days >= 5);
+  [['wL', f0], ['w50', f0], ['wC', f0]].forEach(([k, f]) => { $(k).textContent = f(t[k]); });
+  $('exp').textContent = f2(t.exp) + 'x'; $('lvlword').textContent = t.lvl ? `第 ${t.lvl} 階 · 正二 ${t.aL}%` : '未觸發'; $('onword').textContent = t.on ? '進場' : '出場';
   const bar = $('allocbar'); bar.replaceChildren();
   [[t.wL, 'var(--cL)'], [t.w50, 'var(--c50)'], [t.wC, 'var(--cCash)']].forEach(([w, c]) => { if (w > 0) { const s = el('div'); s.style.width = w + '%'; s.style.background = c; bar.append(s); } });
   let last = -1; for (let i = n - 1; i >= 0; i--) if (d.changed[i]) { last = i; break; }
-  $('last-chg').textContent = last < 0 ? '近 2 年沒有' : `${d.date[last]}（${n - 1 - last ? (n - 1 - last) + ' 個交易日前' : '最新這個交易日'}）`;
-
-  /* 規則狀態 */
+  $('last-chg').textContent = last < 0 ? '—' : md(d.date[last]) + (n - 1 - last ? ` · ${n - 1 - last} 日前` : '');
   const tpe = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date());
-  const rule = $('rule-say'); rule.replaceChildren();
-  if (t.changed) {
-    rule.append(el('span', '訊號變更', 'tag act'), `目標配置在 ${t.date} 收盤後變了。照規則，調整日是下一個交易日` + (tpe > t.date ? '；今天有開市的話就是今天。' : '。'));
-  } else {
-    rule.append(el('span', '訊號沒變', 'tag'), `${t.date} 收盤後目標配置和前一天相同，沒有因為訊號要做的調整。`);
-  }
+  $('hero').classList.toggle('is-act', !!t.changed);
+  $('sig-chip').textContent = t.changed ? '訊號變更' : '訊號不變'; $('sig-chip').className = 'chip' + (t.changed ? ' act' : '');
+  $('sig-msg').textContent = t.changed ? `下一個交易日收盤前調整${tpe > t.date ? '（今天有開市就是今天）' : ''}` : '沒有因訊號要做的調整';
   renderMine();
 
-  /* 規則用到的數據 */
-  $('facts-rule').replaceChildren(
-    fact('加權指數收盤', f0(t.close), `${t.date}`, t.chg),
-    fact('距一年高點', pct(t.dd), `一年高點 ${f0(t.hi)}。逆勢桶${t.lvl ? `在第 ${t.lvl} 階` : '未觸發'}；回落 10%、20%、30% 各加一階`),
-    fact('距 200 日線', sgn(t.dist), `200 日線 ${f0(t.ma)}。順勢桶${t.on ? '進場中，跌破 -3% 才出場' : '出場中，站上 +3% 才進場'}`),
-  );
-  $('levels').replaceChildren(...D.levels.map((l) => tr([[l.label, 'wrap-cell'], f0(l.px), sgn(l.gap)])));
-
-  /* 參考數據 */
-  const ref = [fact('VIX', f1(t.vix), `美股 ${t.vix_date} 收盤，台股收盤時已知的最新值`, t.vix_chg)];
-  const keep = M.keep || [];
-  if (keep.length) {
-    const k = keep[keep.length - 1], kp = keep[keep.length - 2];
-    ref.push(fact('全市場擔保維持率', f2(k.rate) + '%', `${k.date}，證交所官方。${kp ? `前一個交易日 ${f2(kp.rate)}%` : ''}`));
-    ref.push(fact('維持率低於 130% 的戶數', f0(k.call), `${k.date}。當日通知補繳 ${f2(k.callAmt)} 億元${kp ? `；前一個交易日 ${f0(kp.call)} 戶` : ''}`));
-    ref.push(fact('隔日應處分（斷頭）戶數', f0(k.exe), `${k.date}。金額 ${f2(k.exeAmt)} 億元${kp ? `；前一個交易日 ${f0(kp.exe)} 戶` : ''}`));
-  } else ref.push(fact('全市場擔保維持率', '—', '這次沒有抓到證交所的資料'));
-  if (M.bal) {
-    const b = M.bal;
-    ref.push(fact('上市融資餘額', f0(b.amt) + ' 億', `${b.date}，占上市總市值 ${f2(b.ratio)}%`, b.chg1));
-    ref.push(fact('融資餘額 5 日變化', sgn(b.chg5), '減少代表融資部位被賣出或斷頭'));
-    ref.push(fact('融資餘額 20 日變化', sgn(b.chg20), '回測裡用來觀察「融資有沒有被洗出去」的指標'));
-  } else ref.push(fact('上市融資餘額', '—', '這次沒有抓到證交所的資料'));
-  ref.push(fact('0050 收盤', f2(t.px50), t.px_date, t.px50_chg), fact('00631L 收盤', f2(t.pxL), t.px_date, t.pxL_chg));
-  $('facts-ref').replaceChildren(...ref);
-  $('keep-body').replaceChildren(...keep.slice().reverse().map((k) => tr([k.date, f2(k.rate) + '%', f0(k.call), f2(k.callAmt) + ' 億', f0(k.exe), f2(k.exeAmt) + ' 億'])));
-
-  $('history').replaceChildren(...d3.range(n - 1, Math.max(-1, n - 61), -1).map((i) => tr([d.date[i], f0(d.close[i]), pct(d.dd[i]), sgn(d.dist[i]), String(d.lvl[i]), d.on[i] ? '進場' : '出場',
-    d.wL[i] + '%', d.w50[i] + '%', d.wC[i] + '%', f2(d.exp[i]), [d.changed[i] ? '訊號變更，隔日調整' : '—', d.changed[i] ? 'flag' : '']], d.changed[i] ? 'hl' : '')));
+  const board = [
+    gcard('dd', '距一年高點', t.dd, pct(t.dd), null, `高點 ${f0(t.hi)}`),
+    gcard('dist', '距 200 日線', t.dist, sgn(t.dist), null, `200 日線 ${f0(t.ma)}`),
+    gcard('vix', 'VIX', t.vix, f1(t.vix), t.vix_chg == null ? null : [sg2(t.vix_chg), t.vix_chg], `美股 ${md(t.vix_date)}`),
+  ];
+  if (M.bal) board.push(gcard('m20', '融資餘額 20 日變化', M.bal.chg20, sgn(M.bal.chg20), null, `${f0(M.bal.amt)} 億 · ${md(M.bal.date)}`));
+  if (kn) { const r = K.rate[kn - 1], p = kn > 1 ? K.rate[kn - 2] : null; board.push(gcard('keep', '全市場擔保維持率', r, f2(r) + '%', p == null ? null : [sg2(r - p, ''), r - p], `證交所 ${md(K.date[kn - 1])}`)); }
+  $('board').replaceChildren(...board);
+  const tiles = [tile('加權指數', f0(t.close), t.chg), tile('0050', f2(t.px50), t.px50_chg), tile('00631L', f2(t.pxL), t.pxL_chg)];
+  if (M.bal) tiles.push(tile('上市融資餘額', f0(M.bal.amt) + ' 億', M.bal.chg1, `5 日 ${sgn(M.bal.chg5)}`));
+  if (kn) tiles.push(tile('維持率 <130% 戶數', f0(K.call[kn - 1]), null, kn > 1 ? `前日 ${f0(K.call[kn - 2])}` : md(K.date[kn - 1])), tile('應處分戶數', f0(K.exe[kn - 1]), null, kn > 1 ? `前日 ${f0(K.exe[kn - 2])}` : md(K.date[kn - 1])));
+  $('tiles').replaceChildren(...tiles);
+  $('levels').replaceChildren(...D.levels.map((l) => tr([l.label.replace(/：.*/, '') + ' → ' + l.kind, f0(l.px), [sgn(l.gap), tone(l.gap)]])));
+  $('keep-body').replaceChildren(...d3.range(kn - 1, Math.max(-1, kn - 6), -1).map((i) => tr([[md(K.date[i]), 'd'], f2(K.rate[i]) + '%', f0(K.call[i]), f0(K.exe[i])])));
+  $('history').replaceChildren(...d3.range(n - 1, Math.max(-1, n - 61), -1).map((i) => tr([[d.date[i], 'd'], f0(d.close[i]), pct(d.dd[i]), sgn(d.dist[i]), f1(d.vix[i]), String(d.lvl[i]), d.on[i] ? '進' : '出',
+    d.wL[i] + '%', d.w50[i] + '%', d.wC[i] + '%', f2(d.exp[i]), [d.changed[i] ? '變更' : '', d.changed[i] ? 'flag' : '']], d.changed[i] ? 'hl' : '')));
   $('generated').textContent = new Date(D.generated).toLocaleString('zh-TW', { hour12: false });
-}
-function renderMine() {
-  const z = position(), mine = $('mine-say'); mine.replaceChildren();
-  if (!z) { const a = el('a', '到「試算」填入持股'); a.href = '#sizing'; mine.append('你的部位：還沒填。', a, '，這裡之後會直接顯示你需不需要調整、要買賣幾股。'); return; }
-  mine.append('你的部位：', el('b', z.need ? '需要調整' : '不用動'), `。持股和目標最大差 ${f1(z.drift)} 個百分點（門檻 ${D.drift}）` + (z.need && z.trades.length ? `，照目標要${z.trades.join('、')}。` : '。'));
 }
 
 /* ── 試算 ── */
 function renderSizing() {
-  const t = D.today, z = position();
-  $('size-note').textContent = `股數用 ${t.px_date} 收盤價估算（0050 ${f2(t.px50)}、00631L ${f2(t.pxL)}），沒算手續費和證交稅。`;
-  const body = $('size-body'); body.replaceChildren(); renderMine();
-  if (!z) { $('size-say').textContent = '輸入持股後，這裡會告訴你需不需要調整。'; return; }
-  const { cur, tgt, tot, drift, need, add } = z;
-  const say = $('size-say'); say.replaceChildren();
-  say.append(el('b', need ? '需要調整' : '不用動'), need
-    ? (t.changed ? '：目標配置剛變更。' : `：持股和目標最大差 ${f1(drift)} 個百分點，超過 ${D.drift}。`)
-    : `：持股和目標最大差 ${f1(drift)} 個百分點，沒超過 ${D.drift}，訊號也沒變。`, ` 總資金 ${f0(tot)} 元。`);
+  const t = D.today, z = position(), body = $('size-body'); body.replaceChildren(); renderMine();
+  $('size-note').textContent = `股數以 ${md(t.px_date)} 收盤價估算（0050 ${f2(t.px50)}、00631L ${f2(t.pxL)}），未含交易成本。`;
+  if (!z) { $('size-chip').textContent = '填入持股'; $('size-chip').className = 'chip'; $('size-meta').textContent = ''; return; }
+  $('size-chip').textContent = z.need ? '需要調整' : '不用動'; $('size-chip').className = 'chip' + (z.need ? ' act' : '');
+  $('size-meta').textContent = `偏離 ${f1(z.drift)} / 門檻 ${D.drift} · 總資金 ${f0(z.tot)}`;
   [['L', '00631L', t.pxL], ['s50', '0050', t.px50], ['cash', '現金', 0]].forEach(([k, name, px]) => {
-    const diff = tgt[k] - cur[k];
-    body.append(tr([name, f0(cur[k]), f0(cur[k] / tot * 100) + '%', f0(tgt[k]), f0(tgt[k] / tot * 100) + '%',
-      px ? (diff >= 0 ? '買 ' : '賣 ') + f0(Math.trunc(Math.abs(diff) / px)) + ' 股' : (diff >= 0 ? '+' : '−') + f0(Math.abs(diff)) + ' 元']));
+    const diff = z.tgt[k] - z.cur[k];
+    body.append(tr([name, f0(z.cur[k]), f0(z.cur[k] / z.tot * 100) + '%', f0(z.tgt[k]), f0(z.tgt[k] / z.tot * 100) + '%',
+      px ? (diff >= 0 ? '買 ' : '賣 ') + f0(Math.trunc(Math.abs(diff) / px)) + ' 股' : (diff >= 0 ? '+' : '−') + f0(Math.abs(diff))]));
   });
-  if (add > 0 && !need) say.append(` 新資金 ${f0(add)} 元可以照目標比例買進：00631L ${f0(add * t.wL / 100)} 元、0050 ${f0(add * t.w50 / 100)} 元，其餘留現金。`);
 }
 
 /* ── 圖的共用零件 ── */
@@ -443,137 +440,156 @@ const tipFill = (tip, title, pairs) => { tip.replaceChildren(el('div', title, 't
 const tipPlace = (tip, px, W, top) => { tip.hidden = false; const w = tip.offsetWidth; let left = px + 12; if (left + w > W) left = px - 12 - w; tip.style.left = Math.max(0, Math.min(W - w, left)) + 'px'; tip.style.top = top + 'px'; };
 const frame = (host, W, H, aria) => d3.select(host).append('svg').attr('width', '100%').attr('height', H).attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', aria);
 const measurer = (svg) => (t) => { const e = svg.append('text').attr('class', 'tick').text(t); const w = e.node().getComputedTextLength(); e.remove(); return w; };
+const hline = (svg, x1, x2, y, color, dash) => svg.append('line').attr('x1', x1).attr('x2', x2).attr('y1', y).attr('y2', y).style('stroke', color).attr('stroke-dasharray', dash || null);
+const xTicks = (svg, dates, x, y, lo, hi, everyMonths) => { for (let i = 1; i < dates.length; i++) { const m = dates[i].slice(5, 7); if (m === dates[i - 1].slice(5, 7) || (+m - 1) % everyMonths || x(i) > hi || x(i) < lo) continue; svg.append('text').attr('class', 'tick').attr('x', x(i)).attr('y', y).attr('text-anchor', 'middle').text(dates[i].slice(2, 7).replace('-', '/')); } };
+const hover = (svg, host, x, n, box, onMove) => {
+  const rule = svg.append('line').attr('y1', box.t).attr('y2', box.b).style('stroke', 'var(--mut)').attr('visibility', 'hidden');
+  const tip = el('div', null, 'tip'); tip.hidden = true; host.append(tip);
+  svg.append('rect').attr('x', box.l).attr('y', box.t).attr('width', Math.max(0, box.r - box.l)).attr('height', box.b - box.t).attr('fill', 'transparent')
+    .on('pointermove pointerdown', (ev) => { const i = Math.max(0, Math.min(n - 1, Math.round(x.invert(d3.pointer(ev)[0])))); rule.attr('x1', x(i)).attr('x2', x(i)).attr('visibility', 'visible'); const [title, pairs] = onMove(i); tipFill(tip, title, pairs); tipPlace(tip, x(i), box.W, box.t); })
+    .on('pointerleave', () => { tip.hidden = true; rule.attr('visibility', 'hidden'); });
+};
 
-/* ── 走勢：加權指數、200 日線、觸發價位、目標曝險 ── */
+/* ── 加權指數、200 日線、觸發價位、目標曝險 ── */
 function drawPrice() {
   const host = $('price-chart'), W = host.clientWidth; if (!W) return;
   document.querySelectorAll('[data-range]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.range === range)));
-  const d = D.daily, N = d.date.length, a = Math.max(0, N - range), n = N - a, narrow = W < 560;
-  const at = (k, i) => d[k][a + i];
-  const mt = 8, H1 = narrow ? 230 : 320, gapY = 26, H2 = 60, mb = 22, top2 = mt + H1 + gapY, H = top2 + H2 + mb;
+  const d = D.daily, N = d.date.length, a = Math.max(0, N - range), n = N - a, narrow = W < 560, at = (k, i) => d[k][a + i];
+  const mt = 8, H1 = narrow ? 220 : 300, gapY = 22, H2 = 54, mb = 20, top2 = mt + H1 + gapY, H = top2 + H2 + mb;
   host.replaceChildren();
-  const svg = frame(host, W, H, '加權指數收盤、200 日線與觸發價位，下方是目標曝險倍數'), meas = measurer(svg);
-  const lo0 = d3.min(d3.range(n), (i) => Math.min(at('close', i), at('ma', i))), hi0 = d3.max(d3.range(n), (i) => Math.max(at('close', i), at('ma', i)));
+  const svg = frame(host, W, H, '加權指數收盤、200 日線、觸發價位與目標曝險'), meas = measurer(svg), idx = d3.range(n);
+  const lo0 = d3.min(idx, (i) => Math.min(at('close', i), at('ma', i))), hi0 = d3.max(idx, (i) => Math.max(at('close', i), at('ma', i)));
   const levels = D.levels.filter((l) => l.px > lo0 * 0.8 && l.px < hi0 * 1.2);
   const y = d3.scaleLinear([Math.min(lo0, ...levels.map((l) => l.px)), Math.max(hi0, ...levels.map((l) => l.px))], [mt + H1, mt]).nice(5);
   const yt = y.ticks(5), ml = Math.ceil(d3.max(yt, (t) => meas(f0(t)))) + 8;
-  const lab = (l) => (narrow ? f0(l.px) : `${f0(l.px)} ${l.kind}`);
-  const mr = levels.length ? Math.ceil(d3.max(levels, (l) => meas(lab(l)))) + 10 : 12;
+  const lab = (l) => (narrow ? f0(l.px) : `${f0(l.px)} ${l.kind}`), mr = levels.length ? Math.ceil(d3.max(levels, (l) => meas(lab(l)))) + 10 : 12;
   const x = d3.scaleLinear([0, n - 1], [ml, W - mr]), y2 = d3.scaleLinear([0, 2], [top2 + H2, top2]);
-  const grid = (yy, text) => { svg.append('line').attr('x1', ml).attr('x2', W - mr).attr('y1', yy).attr('y2', yy).style('stroke', 'var(--line)'); svg.append('text').attr('class', 'tick').attr('x', ml - 6).attr('y', yy + 4).attr('text-anchor', 'end').text(text); };
-  yt.forEach((t) => grid(y(t), f0(t))); [0, 1, 2].forEach((t) => grid(y2(t), t));
-  const every = range > 300 ? (narrow ? 6 : 3) : range > 150 ? (narrow ? 3 : 2) : (narrow ? 2 : 1);
-  for (let i = 1; i < n; i++) {
-    const m = at('date', i).slice(5, 7);
-    if (m === at('date', i - 1).slice(5, 7) || (+m - 1) % every || x(i) > W - mr - 24 || x(i) < ml + 20) continue;
-    svg.append('text').attr('class', 'tick').attr('x', x(i)).attr('y', H - 5).attr('text-anchor', 'middle').text(narrow ? at('date', i).slice(2, 7).replace('-', '/') : at('date', i).slice(0, 7));
-  }
-  const idx = d3.range(n);
-  svg.append('path').attr('d', d3.area().x((i) => x(i)).y0(y2(0)).y1((i) => y2(at('exp', i))).curve(d3.curveStepAfter)(idx)).style('fill', 'var(--cL)').attr('opacity', 0.2);
-  svg.append('path').attr('d', d3.line().x((i) => x(i)).y((i) => y2(at('exp', i))).curve(d3.curveStepAfter)(idx)).attr('fill', 'none').style('stroke', 'var(--cL)').attr('stroke-width', 1.6);
+  const grid = (yy, text) => { hline(svg, ml, W - mr, yy, 'var(--line)'); svg.append('text').attr('class', 'tick').attr('x', ml - 6).attr('y', yy + 3.5).attr('text-anchor', 'end').text(text); };
+  yt.forEach((t) => grid(y(t), f0(t))); [0, 1, 2].forEach((t) => grid(y2(t), t + 'x'));
+  xTicks(svg, idx.map((i) => at('date', i)), x, H - 5, ml + 18, W - mr - 20, range > 300 ? 6 : range > 150 ? (narrow ? 3 : 2) : (narrow ? 2 : 1));
+  svg.append('path').attr('d', d3.area().x((i) => x(i)).y0(y2(0)).y1((i) => y2(at('exp', i))).curve(d3.curveStepAfter)(idx)).style('fill', 'var(--cL)').attr('opacity', 0.22);
+  svg.append('path').attr('d', d3.line().x((i) => x(i)).y((i) => y2(at('exp', i))).curve(d3.curveStepAfter)(idx)).attr('fill', 'none').style('stroke', 'var(--cL)').attr('stroke-width', 1.5);
   let lastY = -99;
-  levels.slice().sort((p, q) => y(p.px) - y(q.px)).forEach((l) => {
-    const yy = y(l.px); let ty = yy + 4; if (ty - lastY < 14) ty = lastY + 14; lastY = ty;
-    svg.append('line').attr('x1', ml).attr('x2', W - mr).attr('y1', yy).attr('y2', yy).style('stroke', 'var(--mut)').attr('stroke-dasharray', '5 4').attr('stroke-width', 1.1);
-    svg.append('text').attr('class', 'tick').attr('x', W - mr + 6).attr('y', ty).text(lab(l));
-  });
+  levels.slice().sort((p, q) => y(p.px) - y(q.px)).forEach((l) => { const yy = y(l.px); let ty = yy + 3.5; if (ty - lastY < 13) ty = lastY + 13; lastY = ty; hline(svg, ml, W - mr, yy, 'var(--mut)', '5 4'); svg.append('text').attr('class', 'tick').attr('x', W - mr + 6).attr('y', ty).text(lab(l)); });
   const line = (k) => d3.line().x((i) => x(i)).y((i) => y(at(k, i)))(idx);
-  svg.append('path').attr('d', line('ma')).attr('fill', 'none').style('stroke', 'var(--mut)').attr('stroke-width', 1.3);
-  svg.append('path').attr('d', line('close')).attr('fill', 'none').style('stroke', 'var(--ink)').attr('stroke-width', 1.8).attr('stroke-linejoin', 'round');
-  idx.filter((i) => at('changed', i)).forEach((i) => svg.append('circle').attr('cx', x(i)).attr('cy', y(at('close', i))).attr('r', 3).style('fill', 'var(--card)').style('stroke', 'var(--cL)').attr('stroke-width', 1.8));
-  svg.append('circle').attr('cx', x(n - 1)).attr('cy', y(at('close', n - 1))).attr('r', 3.8).style('fill', 'var(--ink)');
-  const rule = svg.append('line').attr('y1', mt).attr('y2', top2 + H2).style('stroke', 'var(--mut)').attr('stroke-width', 1).attr('visibility', 'hidden');
-  const dot = svg.append('circle').attr('r', 4.5).style('fill', 'var(--card)').style('stroke', 'var(--ink)').attr('stroke-width', 2).attr('visibility', 'hidden');
-  const tip = el('div', null, 'tip'); tip.hidden = true; host.append(tip);
-  svg.append('rect').attr('x', ml).attr('y', mt).attr('width', Math.max(0, W - ml - mr)).attr('height', top2 + H2 - mt).attr('fill', 'transparent')
-    .on('pointermove pointerdown', (ev) => {
-      const i = Math.max(0, Math.min(n - 1, Math.round(x.invert(d3.pointer(ev)[0]))));
-      rule.attr('x1', x(i)).attr('x2', x(i)).attr('visibility', 'visible'); dot.attr('cx', x(i)).attr('cy', y(at('close', i))).attr('visibility', 'visible');
-      tipFill(tip, at('date', i) + (at('changed', i) ? '　訊號變更' : ''), [['收盤', f0(at('close', i))], ['200 日線', f0(at('ma', i))], ['距一年高點', pct(at('dd', i))], ['距 200 日線', sgn(at('dist', i))],
-        ['00631L / 0050 / 現金', `${at('wL', i)}% / ${at('w50', i)}% / ${at('wC', i)}%`], ['目標曝險', f2(at('exp', i)) + ' 倍']]);
-      tipPlace(tip, x(i), W, mt);
-    })
-    .on('pointerleave', () => { tip.hidden = true; rule.attr('visibility', 'hidden'); dot.attr('visibility', 'hidden'); });
+  svg.append('path').attr('d', line('ma')).attr('fill', 'none').style('stroke', 'var(--mut)').attr('stroke-width', 1.2);
+  svg.append('path').attr('d', line('close')).attr('fill', 'none').style('stroke', 'var(--ink)').attr('stroke-width', 1.7).attr('stroke-linejoin', 'round');
+  idx.filter((i) => at('changed', i)).forEach((i) => svg.append('circle').attr('cx', x(i)).attr('cy', y(at('close', i))).attr('r', 3).style('fill', 'var(--panel)').style('stroke', 'var(--cL)').attr('stroke-width', 1.8));
+  svg.append('circle').attr('cx', x(n - 1)).attr('cy', y(at('close', n - 1))).attr('r', 3.6).style('fill', 'var(--ink)');
+  hover(svg, host, x, n, { l: ml, r: W - mr, t: mt, b: top2 + H2, W }, (i) => [at('date', i) + (at('changed', i) ? ' 變更' : ''), [['收盤', f0(at('close', i))], ['200 日線', f0(at('ma', i))], ['距高點', pct(at('dd', i))], ['距 200 日線', sgn(at('dist', i))], ['正二/0050/現金', `${at('wL', i)}/${at('w50', i)}/${at('wC', i)}`], ['曝險', f2(at('exp', i)) + 'x']]]);
 }
 
-/* ── 回測：本金的成長 ── */
+/* ── 極端值圖 ── */
+function zoneChart(host, key, dates, vals, fmt) {
+  const W = host.clientWidth; if (!W || !vals.length) return;
+  const c = E.ind[key], n = vals.length, mt = 8, mb = 20, H = 200;
+  host.replaceChildren();
+  const svg = frame(host, W, H, `${c.name} 走勢與極端區`), meas = measurer(svg);
+  const marks = c.zones.map((z) => z.v).concat((c.refs || []).map((r) => r.v));
+  const ext = d3.extent(vals.concat(marks)), pad = (ext[1] - ext[0]) * 0.06, y = d3.scaleLinear([ext[0] - pad, ext[1] + pad], [H - mb, mt]);
+  const yt = y.ticks(4), ml = Math.ceil(d3.max(yt, (t) => meas(num(t)))) + 8;
+  const rlab = c.zones.map((z) => thr(z, c.unit)).concat((c.refs || []).map((r) => `${r.v} ${r.label}`)), mr = rlab.length ? Math.ceil(d3.max(rlab, meas)) + 10 : 10;
+  const x = d3.scaleLinear([0, n - 1], [ml, W - mr]);
+  yt.forEach((t) => { hline(svg, ml, W - mr, y(t), 'var(--line)'); svg.append('text').attr('class', 'tick').attr('x', ml - 6).attr('y', y(t) + 3.5).attr('text-anchor', 'end').text(num(t)); });
+  c.zones.forEach((z) => {
+    const y0 = z.op === '<=' ? y(z.v) : mt, y1 = z.op === '<=' ? H - mb : y(z.v), col = z.side === 'in' ? 'var(--zin)' : 'var(--zout)';
+    svg.append('rect').attr('x', ml).attr('width', W - mr - ml).attr('y', y0).attr('height', Math.max(0, y1 - y0)).style('fill', col).attr('opacity', 0.15);
+    hline(svg, ml, W - mr, y(z.v), col, '4 3');
+    svg.append('text').attr('class', 'tick').attr('x', W - mr + 6).attr('y', y(z.v) + 3.5).style('fill', col).text(thr(z, c.unit));
+  });
+  (c.refs || []).forEach((r) => { hline(svg, ml, W - mr, y(r.v), 'var(--mut)', '4 3'); svg.append('text').attr('class', 'tick').attr('x', W - mr + 6).attr('y', y(r.v) + 3.5).text(`${r.v} ${r.label}`); });
+  xTicks(svg, dates, x, H - 5, ml + 18, W - mr - 16, n > 300 ? 6 : n > 120 ? 3 : 1);
+  svg.append('path').attr('d', d3.line().x((v, i) => x(i)).y((v) => y(v))(vals)).attr('fill', 'none').style('stroke', 'var(--ink)').attr('stroke-width', 1.4).attr('stroke-linejoin', 'round');
+  const zl = zoneOf(key, vals[n - 1]);
+  svg.append('circle').attr('cx', x(n - 1)).attr('cy', y(vals[n - 1])).attr('r', 4).style('fill', zl ? (zl.side === 'in' ? 'var(--zin)' : 'var(--zout)') : 'var(--ink)').style('stroke', 'var(--panel)').attr('stroke-width', 1.5);
+  hover(svg, host, x, n, { l: ml, r: W - mr, t: mt, b: H - mb, W }, (i) => { const z = zoneOf(key, vals[i]); return [dates[i], [[c.name, fmt(vals[i])]].concat(z ? [['區間', z.label]] : [])]; });
+}
+function renderZones() {
+  if (!E) return;
+  const d = D.daily, M = D.margin || {}, K = M.keep || { date: [], rate: [] };
+  const list = [['dd', d.date, d.dd, pct], ['dist', d.date, d.dist, sgn], ['vix', d.date, d.vix, f1]];
+  if (M.m20) list.push(['m20', M.m20.date, M.m20.v, sgn]);
+  if (K.date.length > 1) list.push(['keep', K.date, K.rate, (v) => f2(v) + '%']);
+  const jobs = [];
+  $('zcharts').replaceChildren(...list.map(([key, dates, vals, fmt]) => {
+    const c = E.ind[key], card = el('div', null, 'card'), head = el('div', null, 'zc-head'), host = el('div', null, 'chart');
+    head.append(el('h2', c.name)); if (c.zones.length) head.append(zchip(key, vals[vals.length - 1])); head.append(el('b', fmt(vals[vals.length - 1])));
+    card.append(head, host);
+    if (c.zones.length) {
+      const sc = el('div', null, 'scroll'), tb = el('table'), th = el('thead'), hr = el('tr'), body = el('tbody');
+      ['區間', '歷史占比', '次數', '1 年後中位', '上漲率', '最差'].forEach((h) => hr.append(el('th', h))); th.append(hr);
+      c.zones.forEach((z) => body.append(tr([[thr(z, c.unit), z.side === 'in' ? 'zin' : 'zout'], z.days + '%', String(z.n), [sgn(z.f12), tone(z.f12)], z.win + '%', pct(z.worst)])));
+      body.append(tr(['全部日子', '100%', '—', [sgn(E.base.f12), tone(E.base.f12)], E.base.win + '%', pct(E.base.worst)]));
+      tb.append(th, body); sc.append(tb); card.append(sc);
+    }
+    jobs.push(() => zoneChart(host, key, dates, vals, fmt));
+    return card;
+  }));
+  jobs.forEach((j) => j());
+  $('z-cap').textContent = `統計 ${E.from.replace('-', '/')}–${E.asof.slice(0, 7).replace('-', '/')}：處於該區間的日子，之後 1 年的加權指數報酬。擔保維持率歷史太短，只標參考線。`;
+}
+
+/* ── 回測 ── */
 const principal = () => { const v = +$('in-principal').value; return v > 0 ? v : 1; };
 const monthly = () => Math.max(0, +$('in-monthly').value || 0);
-/* 本金期初投入；每個月底再存入一筆（最後一個月不存），都照當時的目標比例買進 */
-const plan = (eq) => { const D2 = monthly(), n = eq.length; let units = principal(); return eq.map((e, i) => { if (i < n - 1) units += D2 / e; return units * e; }); };
+const plan = (eq) => { const m = monthly(), n = eq.length; let units = principal(); return eq.map((e, i) => { if (i < n - 1) units += m / e; return units * e; }); };
 const invested = (n) => d3.range(n).map((i) => principal() + monthly() * Math.min(i + 1, n - 1));
-
 function lineChart(host, labels, vals, inv, opt) {
   const W = host.clientWidth; if (!W) return;
-  const n = labels.length, narrow = W < 560, mt = 8, mb = 22, H = narrow ? 260 : 340;
+  const n = labels.length, narrow = W < 560, mt = 8, mb = 20, H = narrow ? 250 : 320;
   host.replaceChildren();
   const svg = frame(host, W, H, opt.aria), meas = measurer(svg), all = vals.flat().concat(inv);
   const y = opt.log ? d3.scaleLog([d3.min(all) * 0.9, d3.max(all) * 1.1], [H - mb, mt]) : d3.scaleLinear([0, d3.max(all) * 1.05], [H - mb, mt]).nice(5);
   const yt = opt.log ? [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50].map((t) => t * inv[0]).filter((t) => t >= y.domain()[0] && t <= y.domain()[1]) : y.ticks(5);
-  const ml = Math.ceil(d3.max(yt, (t) => meas(money(t)))) + 8, mr = 12, x = d3.scaleLinear([0, n - 1], [ml, W - mr]);
-  yt.forEach((t) => { svg.append('line').attr('x1', ml).attr('x2', W - mr).attr('y1', y(t)).attr('y2', y(t)).style('stroke', 'var(--line)'); svg.append('text').attr('class', 'tick').attr('x', ml - 6).attr('y', y(t) + 4).attr('text-anchor', 'end').text(money(t)); });
+  const ml = Math.ceil(d3.max(yt, (t) => meas(money(t)))) + 8, mr = 10, x = d3.scaleLinear([0, n - 1], [ml, W - mr]);
+  yt.forEach((t) => { hline(svg, ml, W - mr, y(t), 'var(--line)'); svg.append('text').attr('class', 'tick').attr('x', ml - 6).attr('y', y(t) + 3.5).attr('text-anchor', 'end').text(money(t)); });
   for (let i = 1; i < n; i++) { const yr = +labels[i].slice(0, 4); if (yr === +labels[i - 1].slice(0, 4) || yr % opt.everyYears) continue; svg.append('text').attr('class', 'tick').attr('x', x(i)).attr('y', H - 5).attr('text-anchor', 'middle').text(yr); }
   const path = (arr) => d3.line().x((v, i) => x(i)).y((v) => y(v))(arr);
-  svg.append('path').attr('d', path(inv)).attr('fill', 'none').style('stroke', 'var(--mut)').attr('stroke-dasharray', '5 4').attr('stroke-width', 1.2);
-  vals.forEach((arr, j) => {
-    svg.append('path').attr('d', path(arr)).attr('fill', 'none').style('stroke', COLORS[j]).attr('stroke-width', j === 3 ? 2.6 : 1.5).attr('stroke-linejoin', 'round');
-    svg.append('circle').attr('cx', x(n - 1)).attr('cy', y(arr[n - 1])).attr('r', j === 3 ? 3.8 : 2.6).style('fill', COLORS[j]);
-  });
-  const rule = svg.append('line').attr('y1', mt).attr('y2', H - mb).style('stroke', 'var(--mut)').attr('visibility', 'hidden');
-  const tip = el('div', null, 'tip'); tip.hidden = true; host.append(tip);
-  svg.append('rect').attr('x', ml).attr('y', mt).attr('width', Math.max(0, W - ml - mr)).attr('height', H - mb - mt).attr('fill', 'transparent')
-    .on('pointermove pointerdown', (ev) => {
-      const i = Math.max(0, Math.min(n - 1, Math.round(x.invert(d3.pointer(ev)[0]))));
-      rule.attr('x1', x(i)).attr('x2', x(i)).attr('visibility', 'visible');
-      tipFill(tip, labels[i], vals.map((arr, j) => [NAMES[j], money(arr[i])]).concat([[opt.invName, money(inv[i])]]));
-      tipPlace(tip, x(i), W, mt);
-    })
-    .on('pointerleave', () => { tip.hidden = true; rule.attr('visibility', 'hidden'); });
+  svg.append('path').attr('d', path(inv)).attr('fill', 'none').style('stroke', 'var(--mut)').attr('stroke-dasharray', '5 4').attr('stroke-width', 1.1);
+  vals.forEach((arr, j) => { svg.append('path').attr('d', path(arr)).attr('fill', 'none').style('stroke', COLORS[j]).attr('stroke-width', j === 3 ? 2.4 : 1.4).attr('stroke-linejoin', 'round'); svg.append('circle').attr('cx', x(n - 1)).attr('cy', y(arr[n - 1])).attr('r', j === 3 ? 3.6 : 2.4).style('fill', COLORS[j]); });
+  hover(svg, host, x, n, { l: ml, r: W - mr, t: mt, b: H - mb, W }, (i) => [labels[i], vals.map((arr, j) => [NAMES[j], money(arr[i])]).concat([[opt.invName, money(inv[i])]])]);
 }
-
 function renderBacktest() {
-  const b = D.bt, n = b.months.length, vals = SERIES.map((k) => plan(b.eq[k])), inv = invested(n), P = principal(), M = monthly();
-  const say = $('bt-say'); say.replaceChildren();
-  say.append('本金 ', el('b', money(P)), M ? '、每月再存 ' : '', M ? el('b', money(M)) : '', '，照混合（兩桶）的規則放 10 年：累計投入 ', el('b', money(inv[n - 1])), '，回測結果是 ', el('b', money(vals[3][n - 1])), '。');
-  $('bt-range').textContent = `${b.start} 到 ${b.end}`; $('bt-changes').textContent = b.changes;
-  $('grow').replaceChildren(...SERIES.map((k, j) => { const c = el('div', null, 'card'); c.style.boxShadow = 'none'; c.style.padding = '12px'; const nm = el('div', null, 'alloc-name'); const sw = el('i', null, 'sw'); sw.style.background = COLORS[j]; nm.append(sw, NAMES[j]);
-    c.append(nm, el('div', money(vals[j][n - 1]), 'grow-v'), el('div', `單筆本金成長 ${f2(b.stats[j].final)} 倍`, 'tile-k')); return c; }));
-  $('eq-legend').replaceChildren(...NAMES.map((nm, j) => { const s = el('span'); const sw = el('i', null, 'sw'); sw.style.background = COLORS[j]; s.append(sw, nm); return s; }), (() => { const s = el('span'); s.append(el('i', null, 'ln lv'), '累計投入'); return s; })());
-  lineChart($('eq-chart'), b.months, vals, inv, { aria: '近 10 年資產每個月的金額與累計投入', everyYears: 2, log: false, invName: '累計投入' });
-  $('yearend').replaceChildren(...d3.range(n).filter((i) => !i || i === n - 1 || b.months[i].slice(5) === '12').map((i) =>
-    tr([b.months[i].slice(5) === '12' ? b.months[i].slice(0, 4) + ' 年底' : b.months[i] + ' 月底', money(inv[i]), ...vals.map((v) => money(v[i]))], '')));
-  $('bt-stats').replaceChildren(...b.stats.map((s) => tr([s.name, pct(s.cagr), pct(s.mdd), f0(s.worst) + '%', f2(s.final) + ' 倍'], s.key === 'blend' ? 'hl' : '')));
-  $('yearly').replaceChildren(...b.yearly.map((r) => tr([r.year, ...SERIES.map((k) => [sgn(r[k]), tone(r[k])])])));
+  const b = D.bt, n = b.months.length, vals = SERIES.map((k) => plan(b.eq[k])), inv = invested(n), P = principal();
+  $('bt-final').textContent = money(vals[3][n - 1]); $('bt-inv').textContent = `混合 · 累計投入 ${money(inv[n - 1])}`;
+  $('bt-range').textContent = `${b.start} → ${b.end} · 訊號變更 ${b.changes} 次 · 已扣手續費與證交稅`;
+  $('grow').replaceChildren(...SERIES.map((k, j) => { const c = el('div', null, 'card tile'), nm = el('span', null, 'lab'), sw = el('i', null, 'sw'); sw.style.background = COLORS[j]; sw.style.marginRight = '5px'; nm.append(sw, NAMES[j]); c.append(nm, el('b', money(vals[j][n - 1])), el('span', `${f2(b.stats[j].final)}x`)); return c; }));
+  $('eq-legend').replaceChildren(...NAMES.map((nm, j) => { const s = el('span'), sw = el('i', null, 'sw'); sw.style.background = COLORS[j]; s.append(sw, nm); return s; }), (() => { const s = el('span'); s.append(el('i', null, 'ln lv'), '累計投入'); return s; })());
+  lineChart($('eq-chart'), b.months, vals, inv, { aria: '近 10 年資產走勢與累計投入', everyYears: 2, log: false, invName: '累計投入' });
+  $('bt-stats').replaceChildren(...b.stats.map((s, j) => tr([NAMES[j], pct(s.cagr), pct(s.mdd), f0(s.worst) + '%', f2(s.final) + 'x'], s.key === 'blend' ? 'hl' : '')));
+  $('yearend').replaceChildren(...d3.range(n).filter((i) => !i || i === n - 1 || b.months[i].slice(5) === '12').map((i) => tr([[b.months[i], 'd'], money(inv[i]), ...vals.map((v) => money(v[i]))])));
+  $('yearly').replaceChildren(...b.yearly.map((r) => tr([[r.year, 'd'], ...SERIES.map((k) => [sgn(r[k]), tone(r[k])])])));
   if (S) {
-    $('stress-asof').textContent = S.asof;
-    $('stress-stats').replaceChildren(...S.stats.map((s) => tr([s.name, pct(s.all_cagr), pct(s.all_mdd), pct(s.bear_cagr), pct(s.bear_mdd), pct(s.bull_cagr), pct(s.bull_mdd)], s.key === 'blend' ? 'hl' : '')));
-    lineChart($('stress-chart'), S.q, SERIES.map((k) => S.eq[k].map((e) => P * e)), S.q.map(() => P), { aria: '2000 年至今同一筆本金的金額，對數刻度', everyYears: 5, log: true, invName: '本金' });
+    $('stress-stats').replaceChildren(...S.stats.map((s, j) => tr([NAMES[j], pct(s.all_cagr), pct(s.all_mdd), pct(s.bear_cagr), pct(s.bear_mdd), pct(s.bull_cagr), pct(s.bull_mdd)], s.key === 'blend' ? 'hl' : '')));
+    lineChart($('stress-chart'), S.q, SERIES.map((k) => S.eq[k].map((e) => P * e)), S.q.map(() => P), { aria: '2000 年起同一筆本金的金額，對數刻度', everyYears: 5, log: true, invName: '本金' });
+    $('stress-cap').textContent = `對數刻度 · 不含每月存入 · 固定結果（算到 ${S.asof}）`;
   }
 }
 
 /* ── 分頁 ── */
-const TABS = ['today', 'sizing', 'trend', 'backtest', 'rules'];
+const TABS = ['today', 'trend', 'sizing', 'backtest', 'rules'];
 function show(tab) {
   if (!TABS.includes(tab)) tab = 'today';
   document.querySelectorAll('section[data-tab]').forEach((s) => { s.hidden = s.dataset.tab !== tab || !D; });
   document.querySelectorAll('[data-go]').forEach((a) => { if (a.dataset.go === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   if (!D) return;
-  if (tab === 'trend') drawPrice();
+  if (tab === 'trend') { drawPrice(); renderZones(); }
   if (tab === 'backtest') renderBacktest();
 }
 const current = () => location.hash.slice(1) || 'today';
 window.addEventListener('hashchange', () => { show(current()); window.scrollTo(0, 0); });
-let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => show(current()), 150); });
+let rz, lastW = innerWidth; window.addEventListener('resize', () => { if (innerWidth === lastW) return; lastW = innerWidth; clearTimeout(rz); rz = setTimeout(() => show(current()), 150); });
 document.querySelectorAll('[data-range]').forEach((b) => b.addEventListener('click', () => { range = +b.dataset.range; store.set('range', range); drawPrice(); }));
 ['in-s50', 'in-sl', 'in-cash', 'in-add'].forEach((id) => { $(id).value = store.get(id, ''); $(id).addEventListener('input', () => { store.set(id, $(id).value); if (D) renderSizing(); }); });
 [['in-principal', 1000000], ['in-monthly', 0]].forEach(([id, def]) => { $(id).value = store.get(id, def); $(id).addEventListener('input', () => { store.set(id, $(id).value); if (D) renderBacktest(); }); });
-range = +store.get('range', 252) || 252;
+range = [126, 252, 750].includes(+store.get('range', 252)) ? +store.get('range', 252) : 252;
 
 (async () => {
+  const get = (u, must) => fetch(u).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).catch((e) => { if (must) throw e; return null; });
   try {
-    const [d, s] = await Promise.all([fetch('data/data.json?t=' + Date.now()).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }), fetch('data/stress.json').then((r) => (r.ok ? r.json() : null)).catch(() => null)]);
-    D = d; S = s; $('loading').hidden = true; renderToday(); renderSizing(); show(current());
-  } catch (e) { $('loading').textContent = '資料讀取失敗，請稍後重新整理。'; }
+    [D, S, E] = await Promise.all([get('data/data.json?t=' + Date.now(), true), get('data/stress.json'), get('data/extremes.json')]);
+    $('loading').hidden = true; renderToday(); renderSizing(); show(current());
+  } catch (e) { $('loading').textContent = '資料讀取失敗，請重新整理。'; }
 })();
 </script>
 </body>
