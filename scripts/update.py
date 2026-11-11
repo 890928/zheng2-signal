@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-每日更新：抓行情 → 算兩桶訊號 → 跑滾動 10 年回測 → 寫 data/data.json
+每日更新：抓行情 → 算兩桶訊號與低檔分數 → 跑滾動 10 年回測 → 寫 data/data.json
 
 只用 Python 標準函式庫。由 .github/workflows/update.yml 每個交易日自動執行，
 也可以在本機手動跑：  python3 scripts/update.py
@@ -31,6 +31,11 @@ BUY, SELL, RF = 0.000855, 0.000855 + 0.001, 0.01 / 252   # 手續費 6 折、賣
 BT_YEARS = 10
 CLEAN_FROM = "2015-09-01"     # Yahoo 的 00631L 在這之前有錯價，回測不使用
 DAILY_KEEP = 750
+# ───────── 低檔分數（只供參考，不影響兩桶配置） ─────────
+# 五項條件成立幾項。門檻來自 2001 年以來 56 個波段低點當天的讀數（見 data/extremes.json 的 score）。
+SCORE = [("pull", "距 60 日高點", "<=", -10.0, "%"), ("rsi", "RSI(14)", "<=", 30.0, ""), ("vix", "VIX", ">=", 25.0, ""),
+         ("m10", "融資 10 日變化", "<=", -5.0, "%"), ("d60", "距 60 日線", "<=", -8.0, "%")]
+SCORE_SIG, SCORE_GAP = 4, 20          # 達 4 項算訊號；前 20 個交易日都沒達到才算新的一次
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data")
 OUT = os.path.join(DATA_DIR, "data.json")
@@ -213,6 +218,59 @@ def official_closes(asof, old):
         return {}
 
 
+# ───────────────────────────── 低檔分數 ─────────────────────────────
+def _hit(op, v, th):
+    return v is not None and (v <= th if op == "<=" else v >= th)
+
+
+def score_block(dates, closes, vix, keep_n):
+    """每個交易日收盤時的低檔分數（0–5）。只用當下已知的資料：
+    VIX 用美股前一晚收盤、融資餘額用前一個交易日（當天的要晚上才公布）。"""
+    bal = _load("margin_hist.json", {"date": [], "amt": []})
+    n = len(closes)
+    up = dn = None
+    rsi = [None] * n                                  # Wilder RSI(14)
+    for i in range(1, n):
+        ch = closes[i] - closes[i - 1]
+        u, d = max(ch, 0.0), max(-ch, 0.0)
+        up = u if up is None else up + (u - up) / 14
+        dn = d if dn is None else dn + (d - dn) / 14
+        rsi[i] = 100.0 if dn == 0 else 100 - 100 / (1 + up / dn)
+    vi = bi = -1
+    days = []
+    for i in range(max(60, n - keep_n), n):
+        d = dates[i]
+        while vi + 1 < len(vix["dates"]) and vix["dates"][vi + 1] < d:
+            vi += 1
+        while bi + 1 < len(bal["date"]) and bal["date"][bi + 1] < d:
+            bi += 1
+        w = closes[i - 59: i + 1]
+        v = {"pull": (closes[i] / max(w) - 1) * 100, "rsi": rsi[i], "d60": (closes[i] / (sum(w) / 60) - 1) * 100,
+             "vix": vix["close"][vi] if vi >= 0 else None,
+             "m10": (bal["amt"][bi] / bal["amt"][bi - 10] - 1) * 100 if bi >= 10 else None}
+        days.append({"date": d, "v": v, "n": sum(_hit(op, v[k], th) for k, _, op, th, _ in SCORE),
+                     "vix_date": vix["dates"][vi] if vi >= 0 else None, "bal_date": bal["date"][bi] if bi >= 0 else None})
+    t, ns = days[-1], [x["n"] for x in days]
+    before = ns[-1 - SCORE_GAP:-1]
+    since = None
+    for x in reversed(days):                         # 目前這一段連續達標是從哪天開始
+        if x["n"] < SCORE_SIG:
+            break
+        since = x["date"]
+    # 下一個交易日若收在某個價位時的分數（給網頁盤中試算用）。VIX 與融資用目前抓得到的最新一筆。
+    lv = vix["close"][-1] if vix["dates"] else None
+    lm = (bal["amt"][-1] / bal["amt"][-11] - 1) * 100 if len(bal["amt"]) > 10 else None
+    nxt = {"hi59": round(max(closes[-59:]), 2), "sum59": round(sum(closes[-59:]), 2), "last": closes[-1], "up": up, "dn": dn,
+           "fixed": sum(_hit(op, {"vix": lv, "m10": lm}[k], th) for k, _, op, th, _ in SCORE if k in ("vix", "m10"))}
+    block = {"n": t["n"], "sig": SCORE_SIG, "since": since, "vix_date": t["vix_date"], "bal_date": t["bal_date"],
+             "new": int(t["n"] >= SCORE_SIG and max(before, default=0) < SCORE_SIG),
+             "top": int(t["n"] == len(SCORE) and max(before, default=0) < len(SCORE)),
+             "items": [{"k": k, "name": name, "op": op, "th": th, "unit": unit,
+                        "v": None if t["v"][k] is None else round(t["v"][k], 1), "hit": int(_hit(op, t["v"][k], th))}
+                       for k, name, op, th, unit in SCORE]}
+    return block, ns, nxt
+
+
 # ───────────────────────────── 規則重播 ─────────────────────────────
 def replay(dates, closes):
     rows, lvl, on, prev = [], 0, True, None
@@ -344,6 +402,13 @@ def notify(data, old, ext):
     for k, z in data["zones"].items():
         if z and z != (old.get("zones") or {}).get(k) and "zones" in old:
             events.append(f"{names.get(k, k)} 進入「{z}」：{data['zvals'][k]}")
+    sc = data.get("score") or {}
+    data["score_noted"] = old.get("score_noted", "")
+    skey = f"{asof}|{sc.get('n')}"
+    if (sc.get("new") or sc.get("top")) and data["score_noted"] != skey:
+        hits = "、".join(f"{x['name']} {x['v']}{x['unit']}" for x in sc["items"] if x["hit"])
+        events.append(f"低檔分數 {sc['n']}/{len(sc['items'])}（{md}）：{hits}")
+        data["score_noted"] = skey
     flag = os.path.join(DATA_DIR, "notify_enabled.txt")
     if not os.path.exists(flag):
         with open(flag, "w", encoding="utf-8") as f:
@@ -359,6 +424,8 @@ def notify(data, old, ext):
             f"| 資料日 | {data['asof']} |", f"| 目標配置 | {tgt}（曝險 {t['exp']:.2f}x） |",
             f"| 加權指數 | {t['close']:,}（{t['chg']:+.2f}%）{'，已用證交所收盤價核對' if t.get('confirmed') else '，尚未核對'} |", f"| 距一年高點 | {t['dd']}% |", f"| 距 200 日線 | {t['dist']:+}% |",
             f"| VIX | {t['vix']} |"]
+    if sc:
+        body.append(f"| 低檔分數 | {sc['n']}/{len(sc['items'])}（達 {sc['sig']} 項為訊號，只供參考，不影響目標配置） |")
     if m.get("bal"):
         body.append(f"| 融資餘額 20 日變化 | {m['bal']['chg20']:+}%（{m['bal']['date']}） |")
     if m.get("keep", {}).get("rate"):
@@ -462,6 +529,13 @@ def main():
                      "lvl": t["lvl"], "on": int(t["on"])},
             "rule": {"ladder": LADDER, "ma": MA_N, "buf": BUF, "bucket": BUCKET},
             "official": {d: v for d, v in official.items() if d[:7] == t["date"][:7]}}
+    try:                                             # 低檔分數（要在融資資料更新之後算）
+        data["score"], ns, nxt = score_block(tw["dates"], tw["close"], vix, DAILY_KEEP)
+        daily["score"] = [None] * (len(daily["date"]) - len(ns)) + ns[-len(daily["date"]):]
+        today["score"] = data["score"]["n"]
+        data["next"]["score"] = nxt
+    except Exception as e:  # noqa: BLE001  分數算不出來不影響每日訊號
+        print(f"[警告] 低檔分數沒有算出來：{e}", file=sys.stderr)
     ext = _load("extremes.json", {})
     bal = data["margin"].get("bal") or {}
     data["zvals"] = {"dd": f"{today['dd']}%", "dist": f"{today['dist']:+}%", "vix": f"{today['vix']}", "m20": f"{bal.get('chg20', 0):+}%"}

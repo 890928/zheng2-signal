@@ -131,6 +131,16 @@ section[data-tab] { display: grid; gap: 10px; padding-top: 10px; min-width: 0; }
 .tile b { display: block; font: 700 19px/1.3 var(--mono); letter-spacing: -.01em; margin-top: 2px; white-space: nowrap; }
 .tile > span:last-child { font: 11.5px var(--mono); color: var(--dim); }
 
+/* 低檔分數 */
+.sc-main { display: flex; align-items: center; gap: 14px; margin: 6px 0 10px; }
+.sc-num { font: 700 40px/1 var(--mono); letter-spacing: -.03em; white-space: nowrap; }
+.sc-num small { font-size: .4em; font-weight: 500; color: var(--dim); margin-left: 4px; letter-spacing: 0; }
+.sc-pips { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; flex: 1; max-width: 260px; }
+.sc-pips i { height: 10px; border-radius: 3px; background: var(--soft); }
+.sc-pips i.on { background: var(--zin); }
+td.hit { color: var(--zin); font-weight: 700; } td.miss { color: var(--dim); }
+tr.cur td { background: color-mix(in srgb, var(--zin) 12%, transparent); font-weight: 700; }
+
 /* 表格 */
 .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -14px; padding: 0 14px; }
 table { border-collapse: collapse; width: 100%; }
@@ -211,6 +221,12 @@ ol.steps li, ul.rules li { margin: 5px 0; }
       </div>
     </div>
     <div class="card mine" id="mine"></div>
+    <div class="card" id="score" hidden>
+      <div class="g-head"><span class="lab">低檔分數</span><span class="chip" id="sc-chip">—</span></div>
+      <div class="sc-main"><div class="sc-num"><span id="sc-n">—</span><small>/ 5</small></div><div class="sc-pips" id="sc-pips" role="img"></div></div>
+      <div class="scroll"><table><thead><tr><th>條件</th><th>現值</th><th>門檻</th><th>成立</th></tr></thead><tbody id="sc-body"></tbody></table></div>
+      <p class="cap" id="sc-cap"></p>
+    </div>
     <div class="card" id="whatif">
       <div class="wi-top"><label class="lab" for="in-px">盤中試算 · 若收在</label><input id="in-px" type="number" inputmode="decimal" step="1" min="1"><span class="cap" id="wi-src"></span></div>
       <div class="wi-out"><span class="chip" id="wi-chip">—</span><b id="wi-target">—</b><span class="n" id="wi-meta"></span></div>
@@ -241,15 +257,23 @@ ol.steps li, ul.rules li { margin: 5px 0; }
     <div class="card">
       <div class="zc-head"><h2>加權指數</h2>
         <div class="seg" role="group" aria-label="期間" style="margin-left:auto"><button type="button" data-range="126">6M</button><button type="button" data-range="252">1Y</button><button type="button" data-range="750">3Y</button></div></div>
-      <div class="legend" style="margin-bottom:8px"><span><i class="ln"></i>收盤</span><span><i class="ln ma"></i>200 日線</span><span><i class="ln lv"></i>觸發價位</span><span><i class="sw" style="background:var(--cL);opacity:.6"></i>目標曝險</span></div>
+      <div class="legend" style="margin-bottom:8px"><span><i class="ln"></i>收盤</span><span><i class="ln ma"></i>200 日線</span><span><i class="ln lv"></i>觸發價位</span><span><i class="sw" style="background:var(--cL);opacity:.6"></i>目標曝險</span><span><i class="sw" style="background:var(--zin)"></i>低檔分數 ≥ 4</span></div>
       <div class="chart" id="price-chart" style="min-height:300px"></div>
+    </div>
+    <div class="card" id="score-card" hidden>
+      <div class="zc-head"><h2>低檔分數</h2><span class="chip" id="sz-chip">—</span><b id="sz-n">—</b></div>
+      <div class="chart" id="score-chart"></div>
+      <div class="scroll" style="margin-top:10px"><table><thead><tr><th>分數</th><th>歷史占比</th><th>3 個月後中位</th><th>1 年後中位</th><th>上漲率</th><th>3 個月內再跌</th><th>最差一成</th></tr></thead><tbody id="sz-table"></tbody></table></div>
+      <h2 style="margin-top:14px">歷次訊號（分數 ≥ 4），2006/11 起</h2>
+      <div class="scroll"><table><thead><tr><th>進場日</th><th>加權指數</th><th>之後最多再跌</th><th>見底</th><th>出場日</th><th>指數報酬</th></tr></thead><tbody id="sz-eps"></tbody></table></div>
+      <p class="cap" id="sz-cap"></p>
     </div>
     <div class="sec"><h2>極端值</h2><div class="legend"><span><i class="sw" style="background:var(--zin)"></i>偏進場的極端</span><span><i class="sw" style="background:var(--zout)"></i>過熱</span></div></div>
     <div class="zgrid" id="zcharts"></div>
     <p class="cap" id="z-cap"></p>
     <div class="card">
       <h2>每日紀錄</h2>
-      <div class="scroll"><table><thead><tr><th>日期</th><th>收盤</th><th>距高點</th><th>距 200 日線</th><th>VIX</th><th>逆勢階</th><th>順勢</th><th>00631L</th><th>0050</th><th>現金</th><th>曝險</th><th>動作</th></tr></thead><tbody id="history"></tbody></table></div>
+      <div class="scroll"><table><thead><tr><th>日期</th><th>收盤</th><th>距高點</th><th>距 200 日線</th><th>VIX</th><th>低檔分數</th><th>逆勢階</th><th>順勢</th><th>00631L</th><th>0050</th><th>現金</th><th>曝險</th><th>動作</th></tr></thead><tbody id="history"></tbody></table></div>
     </div>
   </section>
 
@@ -318,6 +342,15 @@ ol.steps li, ul.rules li { margin: 5px 0; }
       </ul>
     </div>
     <div class="card">
+      <h2>低檔分數</h2>
+      <ul class="rules">
+        <li>五項條件成立幾項：距 60 日高點 ≤ −10%、RSI(14) ≤ 30、VIX ≥ 25、融資餘額 10 日變化 ≤ −5%、距 60 日線 ≤ −8%。</li>
+        <li>達 4 項發通知。只供參考，不改變兩桶的目標配置。</li>
+        <li>它標的是「低檔區」，不是最低點：歷史上達 4 項之後，3 個月內通常還會再跌約 9%，優勢要 6–12 個月才出現。</li>
+        <li>VIX 用美股前一晚收盤，融資餘額用前一個交易日公布的數字。</li>
+      </ul>
+    </div>
+    <div class="card">
       <h2>操作</h2>
       <ol class="steps">
         <li>收盤後看「今日」。</li>
@@ -332,7 +365,7 @@ ol.steps li, ul.rules li { margin: 5px 0; }
       <ul class="rules">
         <li>不是投資建議；回測不代表未來。</li>
         <li>壓力測試最大回撤約 67%（2000–2008）。</li>
-        <li>VIX、融資餘額、擔保維持率與極端值統計只供參考，不影響訊號。</li>
+        <li>VIX、融資餘額、擔保維持率、極端值統計與低檔分數只供參考，不影響目標配置。</li>
         <li>回測對照：50:50 是 00631L 與現金各半、偏離 10 個百分點再平衡；純逆勢是只用逆勢桶。</li>
         <li>收盤價以證交所公布的為準；標示「待官方核對」時用的是 Yahoo 的暫定價，訊號通知會等核對後才發。</li>
         <li>部位壓力是估算：00631L 以兩倍複利計，實際會受波動與折溢價影響；也沒算照規則中途調整的效果。</li>
@@ -389,6 +422,49 @@ function gcard(key, name, v, text, chg, foot) {
 }
 const tile = (name, text, chg, sub) => { const c = el('div', null, 'card tile'), s = el('span'); if (chg != null) s.append(el('span', sg2(chg), tone(chg)), sub ? ' · ' : ''); if (sub) s.append(sub); c.append(el('span', name, 'lab'), el('b', text), s); return c; };
 
+/* ── 低檔分數 ── */
+const scFmt = (it) => (it.v == null ? '—' : it.unit === '%' ? (it.k === 'pull' ? pct(it.v) : sgn(it.v)) : f1(it.v));
+const scThr = (it) => (it.op === '<=' ? '≤ ' : '≥ ') + num(it.th) + it.unit;
+const scChip = (c, n, sig) => { c.textContent = n >= sig ? '訊號' : n === sig - 1 ? '接近' : '未達'; c.className = 'chip' + (n >= sig ? ' in' : ''); };
+function renderScore() {
+  const s = D.score; $('score').hidden = !s; if (!s) return;
+  const d = D.daily, n = d.date.length; let run = 0; while (run < n && d.score[n - 1 - run] >= s.sig) run++;
+  scChip($('sc-chip'), s.n, s.sig); if (run > 1) $('sc-chip').textContent = `訊號 · 第 ${run} 日`;
+  $('sc-n').textContent = s.n;
+  $('sc-pips').replaceChildren(...s.items.map((it) => el('i', null, it.hit ? 'on' : ''))); $('sc-pips').setAttribute('aria-label', `五項成立 ${s.n} 項`);
+  $('sc-body').replaceChildren(...s.items.map((it) => tr([it.name, [scFmt(it), 'd'], scThr(it), [it.hit ? '✓' : '—', it.hit ? 'hit' : 'miss']])));
+  let last = -1; for (let i = n - 1; i >= 0; i--) if (d.score[i] >= s.sig) { last = i; break; }
+  $('sc-cap').textContent = `達 ${s.sig} 項為訊號` + (s.n >= s.sig || last < 0 ? '' : ` · 上次 ${md(d.date[last])}`) + ` · VIX ${md(s.vix_date)} · 融資 ${md(s.bal_date)} · 不影響目標配置`;
+}
+/* 下一個交易日若收在 px 的分數（VIX、融資用最新一筆） */
+function scoreIf(px) {
+  const q = D.next && D.next.score; if (!q) return null;
+  const ch = px - q.last, up = q.up + (Math.max(ch, 0) - q.up) / 14, dn = q.dn + (Math.max(-ch, 0) - q.dn) / 14, rsi = dn === 0 ? 100 : 100 - 100 / (1 + up / dn);
+  const pull = (px / Math.max(q.hi59, px) - 1) * 100, d60 = (px / ((q.sum59 + px) / 60) - 1) * 100, th = Object.fromEntries(D.score.items.map((it) => [it.k, it.th]));
+  return q.fixed + (pull <= th.pull) + (rsi <= th.rsi) + (d60 <= th.d60);
+}
+function scoreChart() {
+  const s = D.score, sc = E && E.score; $('score-card').hidden = !s; if (!s) return;
+  const d = D.daily, a = d.score.findIndex((v) => v != null), dates = d.date.slice(a), vals = d.score.slice(a), n = vals.length;
+  scChip($('sz-chip'), s.n, s.sig); $('sz-n').textContent = `${s.n} / 5`;
+  const host = $('score-chart'), W = host.clientWidth;
+  if (W && n) {
+    const mt = 8, mb = 20, H = 170; host.replaceChildren();
+    const svg = frame(host, W, H, '低檔分數每日走勢'), meas = measurer(svg), lab = `≥ ${s.sig} 訊號`, ml = Math.ceil(meas('5')) + 8, mr = Math.ceil(meas(lab)) + 10;
+    const x = d3.scaleLinear([0, n - 1], [ml, W - mr]), y = d3.scaleLinear([0, 5], [H - mb, mt]), bw = Math.max(1, (W - mr - ml) / n);
+    [0, 1, 2, 3, 4, 5].forEach((t) => { hline(svg, ml, W - mr, y(t), 'var(--line)'); svg.append('text').attr('class', 'tick').attr('x', ml - 6).attr('y', y(t) + 3.5).attr('text-anchor', 'end').text(t); });
+    svg.append('rect').attr('x', ml).attr('width', W - mr - ml).attr('y', y(5)).attr('height', y(s.sig) - y(5)).style('fill', 'var(--zin)').attr('opacity', 0.12);
+    vals.forEach((v, i) => { if (v > 0) svg.append('rect').attr('x', Math.min(W - mr - bw, Math.max(ml, x(i) - bw / 2))).attr('width', bw).attr('y', y(v)).attr('height', y(0) - y(v)).style('fill', v >= s.sig ? 'var(--zin)' : 'var(--dim)'); });
+    hline(svg, ml, W - mr, y(s.sig), 'var(--zin)', '4 3'); svg.append('text').attr('class', 'tick').attr('x', W - mr + 6).attr('y', y(s.sig) + 3.5).style('fill', 'var(--zin)').text(lab);
+    xTicks(svg, dates, x, H - 5, ml + 18, W - mr - 16, n > 300 ? 6 : n > 120 ? 3 : 1);
+    hover(svg, host, x, n, { l: ml, r: W - mr, t: mt, b: H - mb, W }, (i) => [dates[i], [['低檔分數', `${vals[i]} / 5`], ['收盤', f0(d.close[a + i])], ['距高點', pct(d.dd[a + i])]]]);
+  }
+  if (!sc) return;
+  $('sz-table').replaceChildren(...sc.table.map((r) => tr([[`${r.s} 項`, r.s >= s.sig ? 'zin' : 'd'], pct(r.days), [sgn(r.f3), tone(r.f3)], [sgn(r.f12), tone(r.f12)], r.win + '%', pct(r.more), pct(r.worst)], r.s === s.n ? 'cur' : '')));
+  $('sz-eps').replaceChildren(...sc.episodes.map((r) => tr([[r.d, 'd'], f0(r.px), [pct(r.more), r.more < 0 ? 'dn' : ''], `${r.days} 日`, r.out, [sgn(r.ret), tone(r.ret)]])));
+  $('sz-cap').textContent = `上表統計 ${sc.from.replace('-', '/')}–${sc.asof.slice(0, 7).replace('-', '/')} 的加權指數（不含息），反白列是今天的分數。歷次訊號為隔日收盤進場、最後一次達標後持有 ${sc.hold}；門檻是看過同一段歷史後訂的，實際會比回測差。`;
+}
+
 /* ── 部位計算 ── */
 const livePx = () => { const l = D.live; return l && l.date > D.today.date && l.px50 && l.pxL ? l : null; };
 function position(w) {
@@ -420,7 +496,8 @@ function renderWhatIf() {
   const w = whatIf(px);
   $('wi-chip').textContent = w.changed ? '收盤後訊號會變' : '訊號不變'; $('wi-chip').className = 'chip' + (w.changed ? ' act' : '');
   $('wi-target').textContent = `${w.wL} / ${w.w50} / ${w.wC}`;
-  $('wi-meta').textContent = `距高點 ${pct(w.dd)} · 距 200 日線 ${sgn(w.dist)} · 逆勢第 ${w.lvl} 階 · 順勢${w.on ? '進場' : '出場'}`;
+  const sn = scoreIf(px);
+  $('wi-meta').textContent = `距高點 ${pct(w.dd)} · 距 200 日線 ${sgn(w.dist)} · 逆勢第 ${w.lvl} 階 · 順勢${w.on ? '進場' : '出場'}` + (sn == null ? '' : ` · 低檔分數 ${sn}/5`);
   if (w.changed) { const z = position({ wL: w.wL, w50: w.w50, wC: w.wC }); if (z) z.trades.forEach((x) => tr0.append(el('span', '屆時 ' + x, 'trade'))); }
 }
 function renderMine() {
@@ -459,7 +536,7 @@ function renderToday() {
   $('hero').classList.toggle('is-act', !!t.changed);
   $('sig-chip').textContent = t.changed ? '訊號變更' : '訊號不變'; $('sig-chip').className = 'chip' + (t.changed ? ' act' : '');
   $('sig-msg').textContent = t.changed ? `下一個交易日收盤前調整${tpe > t.date ? '（今天有開市就是今天）' : ''}` : '沒有因訊號要做的調整';
-  renderMine(); renderStress();
+  renderMine(); renderStress(); renderScore();
   const live = D.live && D.live.date > t.date ? D.live : null, pxIn = $('in-px');
   if (!pxIn.dataset.touched) pxIn.value = live ? Math.round(live.px) : t.close;
   $('wi-src').textContent = live ? `預設為 ${new Date(live.at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei' })} 的盤中價，可改` : '預設為最新收盤，可改成現價';
@@ -479,7 +556,7 @@ function renderToday() {
   $('tiles').replaceChildren(...tiles);
   $('levels').replaceChildren(...D.levels.map((l) => tr([l.label.replace(/：.*/, '') + ' → ' + l.kind, f0(l.px), [sgn(l.gap), tone(l.gap)]])));
   $('keep-body').replaceChildren(...d3.range(kn - 1, Math.max(-1, kn - 6), -1).map((i) => tr([[md(K.date[i]), 'd'], f2(K.rate[i]) + '%', f0(K.call[i]), f0(K.exe[i])])));
-  $('history').replaceChildren(...d3.range(n - 1, Math.max(-1, n - 61), -1).map((i) => tr([[d.date[i], 'd'], f0(d.close[i]), pct(d.dd[i]), sgn(d.dist[i]), f1(d.vix[i]), String(d.lvl[i]), d.on[i] ? '進' : '出',
+  $('history').replaceChildren(...d3.range(n - 1, Math.max(-1, n - 61), -1).map((i) => tr([[d.date[i], 'd'], f0(d.close[i]), pct(d.dd[i]), sgn(d.dist[i]), f1(d.vix[i]), d.score && d.score[i] != null ? [String(d.score[i]), d.score[i] >= ((D.score || {}).sig || 9) ? 'zin' : 'd'] : '—', String(d.lvl[i]), d.on[i] ? '進' : '出',
     d.wL[i] + '%', d.w50[i] + '%', d.wC[i] + '%', f2(d.exp[i]), [d.changed[i] ? '變更' : '', d.changed[i] ? 'flag' : '']], d.changed[i] ? 'hl' : '')));
   $('generated').textContent = new Date(D.generated).toLocaleString('zh-TW', { hour12: false });
 }
@@ -535,12 +612,13 @@ function drawPrice() {
   svg.append('path').attr('d', d3.line().x((i) => x(i)).y((i) => y2(at('exp', i))).curve(d3.curveStepAfter)(idx)).attr('fill', 'none').style('stroke', 'var(--cL)').attr('stroke-width', 1.5);
   let lastY = -99;
   levels.slice().sort((p, q) => y(p.px) - y(q.px)).forEach((l) => { const yy = y(l.px); let ty = yy + 3.5; if (ty - lastY < 13) ty = lastY + 13; lastY = ty; hline(svg, ml, W - mr, yy, 'var(--mut)', '5 4'); svg.append('text').attr('class', 'tick').attr('x', W - mr + 6).attr('y', ty).text(lab(l)); });
+  if (d.score && D.score) { const bw = Math.max(1.5, (W - mr - ml) / n); idx.filter((i) => at('score', i) >= D.score.sig).forEach((i) => svg.append('rect').attr('x', Math.min(W - mr - bw, Math.max(ml, x(i) - bw / 2))).attr('width', bw).attr('y', mt + H1 - 5).attr('height', 5).style('fill', 'var(--zin)')); }
   const line = (k) => d3.line().x((i) => x(i)).y((i) => y(at(k, i)))(idx);
   svg.append('path').attr('d', line('ma')).attr('fill', 'none').style('stroke', 'var(--mut)').attr('stroke-width', 1.2);
   svg.append('path').attr('d', line('close')).attr('fill', 'none').style('stroke', 'var(--ink)').attr('stroke-width', 1.7).attr('stroke-linejoin', 'round');
   idx.filter((i) => at('changed', i)).forEach((i) => svg.append('circle').attr('cx', x(i)).attr('cy', y(at('close', i))).attr('r', 3).style('fill', 'var(--panel)').style('stroke', 'var(--cL)').attr('stroke-width', 1.8));
   svg.append('circle').attr('cx', x(n - 1)).attr('cy', y(at('close', n - 1))).attr('r', 3.6).style('fill', 'var(--ink)');
-  hover(svg, host, x, n, { l: ml, r: W - mr, t: mt, b: top2 + H2, W }, (i) => [at('date', i) + (at('changed', i) ? ' 變更' : ''), [['收盤', f0(at('close', i))], ['200 日線', f0(at('ma', i))], ['距高點', pct(at('dd', i))], ['距 200 日線', sgn(at('dist', i))], ['正二/0050/現金', `${at('wL', i)}/${at('w50', i)}/${at('wC', i)}`], ['曝險', f2(at('exp', i)) + 'x']]]);
+  hover(svg, host, x, n, { l: ml, r: W - mr, t: mt, b: top2 + H2, W }, (i) => [at('date', i) + (at('changed', i) ? ' 變更' : ''), [['收盤', f0(at('close', i))], ['200 日線', f0(at('ma', i))], ['距高點', pct(at('dd', i))], ['距 200 日線', sgn(at('dist', i))], ['正二/0050/現金', `${at('wL', i)}/${at('w50', i)}/${at('wC', i)}`], ['曝險', f2(at('exp', i)) + 'x']].concat(d.score && at('score', i) != null ? [['低檔分數', `${at('score', i)} / 5`]] : [])]);
 }
 
 /* ── 極端值圖 ── */
@@ -640,7 +718,7 @@ function show(tab) {
   document.querySelectorAll('section[data-tab]').forEach((s) => { s.hidden = s.dataset.tab !== tab || !D; });
   document.querySelectorAll('[data-go]').forEach((a) => { if (a.dataset.go === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   if (!D) return;
-  if (tab === 'trend') { drawPrice(); renderZones(); }
+  if (tab === 'trend') { drawPrice(); scoreChart(); renderZones(); }
   if (tab === 'backtest') renderBacktest();
 }
 const current = () => location.hash.slice(1) || 'today';
