@@ -287,11 +287,11 @@ ol.steps li, ul.rules li { margin: 5px 0; }
     </div>
     <div class="card">
       <h2>各年底資產</h2>
-      <div class="scroll"><table><thead><tr><th>時間</th><th>累計投入</th><th>0050</th><th>00631L</th><th>純逆勢</th><th>混合</th></tr></thead><tbody id="yearend"></tbody></table></div>
+      <div class="scroll"><table><thead><tr><th>時間</th><th>累計投入</th><th>0050</th><th>50:50</th><th>00631L</th><th>純逆勢</th><th>混合</th></tr></thead><tbody id="yearend"></tbody></table></div>
     </div>
     <div class="card">
       <h2>各年度報酬</h2>
-      <div class="scroll"><table><thead><tr><th>年度</th><th>0050</th><th>00631L</th><th>純逆勢</th><th>混合</th></tr></thead><tbody id="yearly"></tbody></table></div>
+      <div class="scroll"><table><thead><tr><th>年度</th><th>0050</th><th>50:50</th><th>00631L</th><th>純逆勢</th><th>混合</th></tr></thead><tbody id="yearly"></tbody></table></div>
     </div>
     <div class="card">
       <h2>壓力測試，2000 年起</h2>
@@ -307,7 +307,7 @@ ol.steps li, ul.rules li { margin: 5px 0; }
       <h2>規則</h2>
       <ul class="rules">
         <li>資金分兩桶各一半；訊號變更時一起調回目標比例。</li>
-        <li>逆勢桶：平時 0050。加權指數距一年高點 −10% / −20% / −30%，桶內 30% / 60% / 100% 換 00631L。創一年新高全部換回。</li>
+        <li>逆勢桶：平時 0050。加權指數距一年高點 −20% / −30%，桶內 60% / 100% 換 00631L。創一年新高全部換回。</li>
         <li>順勢桶：加權指數高於 200 日線 3% 持有 00631L，低於 3% 轉現金。</li>
         <li>只看收盤，下一個交易日收盤前調整。訊號沒變時，偏離目標超過 10 個百分點才再平衡。</li>
       </ul>
@@ -326,8 +326,9 @@ ol.steps li, ul.rules li { margin: 5px 0; }
       <h2>注意</h2>
       <ul class="rules">
         <li>不是投資建議；回測不代表未來。</li>
-        <li>壓力測試最大回撤約 68%（2000–2008）。</li>
+        <li>壓力測試最大回撤約 67%（2000–2008）。</li>
         <li>VIX、融資餘額、擔保維持率與極端值統計只供參考，不影響訊號。</li>
+        <li>回測對照：50:50 是 00631L 與現金各半、偏離 10 個百分點再平衡；純逆勢是只用逆勢桶。</li>
         <li>2015/9 以前的 00631L 為合成資料；00631L 的額外報酬近年已縮小。</li>
       </ul>
       <p class="cap">資料：Yahoo Finance、證交所臺股儀表板。產生於 <span class="n" id="generated">—</span>。輸入的持股與本金只存在本機瀏覽器。</p>
@@ -343,8 +344,8 @@ const pct = (v) => f1(v) + '%', sgn = (v) => (v > 0 ? '+' : '') + f1(v) + '%';
 const sg2 = (v, u = '%') => (v > 0 ? '+' : '') + f2(v) + u;
 const money = (v) => { const a = Math.abs(v); return !a ? '0' : a >= 1e8 ? f2(v / 1e8) + ' 億' : a >= 1e6 ? f0(v / 1e4) + ' 萬' : a >= 1e4 ? d3.format(',.1~f')(v / 1e4) + ' 萬' : f0(v) + ' 元'; };
 const md = (s) => s.slice(5).replace('-', '/');
-const SERIES = ['s0050', 'sL', 'ladder', 'blend'], NAMES = ['0050 持有', '00631L 持有', '純逆勢', '混合'];
-const COLORS = ['var(--c50)', 'var(--cL)', 'var(--cLadder)', 'var(--cBlend)'];
+const SERIES = ['s0050', 's5050', 'sL', 'ladder', 'blend'], NAMES = ['0050 持有', '50:50', '00631L 持有', '純逆勢', '混合'];
+const COLORS = ['var(--c50)', 'var(--zin)', 'var(--cL)', 'var(--cLadder)', 'var(--cBlend)'], BL = SERIES.indexOf('blend');
 let D = null, S = null, E = null, range = 252;
 
 const store = { get(k, d) { try { const v = JSON.parse(localStorage.getItem('z2') || '{}')[k]; return v == null ? d : v; } catch (e) { return d; } },
@@ -588,21 +589,24 @@ function lineChart(host, labels, vals, inv, opt) {
   for (let i = 1; i < n; i++) { const yr = +labels[i].slice(0, 4); if (yr === +labels[i - 1].slice(0, 4) || yr % opt.everyYears) continue; svg.append('text').attr('class', 'tick').attr('x', x(i)).attr('y', H - 5).attr('text-anchor', 'middle').text(yr); }
   const path = (arr) => d3.line().x((v, i) => x(i)).y((v) => y(v))(arr);
   svg.append('path').attr('d', path(inv)).attr('fill', 'none').style('stroke', 'var(--mut)').attr('stroke-dasharray', '5 4').attr('stroke-width', 1.1);
-  vals.forEach((arr, j) => { svg.append('path').attr('d', path(arr)).attr('fill', 'none').style('stroke', COLORS[j]).attr('stroke-width', j === 3 ? 2.4 : 1.4).attr('stroke-linejoin', 'round'); svg.append('circle').attr('cx', x(n - 1)).attr('cy', y(arr[n - 1])).attr('r', j === 3 ? 3.6 : 2.4).style('fill', COLORS[j]); });
+  vals.forEach((arr, j) => { svg.append('path').attr('d', path(arr)).attr('fill', 'none').style('stroke', COLORS[j]).attr('stroke-width', j === BL ? 2.4 : 1.4).attr('stroke-linejoin', 'round'); svg.append('circle').attr('cx', x(n - 1)).attr('cy', y(arr[n - 1])).attr('r', j === BL ? 3.6 : 2.4).style('fill', COLORS[j]); });
   hover(svg, host, x, n, { l: ml, r: W - mr, t: mt, b: H - mb, W }, (i) => [labels[i], vals.map((arr, j) => [NAMES[j], money(arr[i])]).concat([[opt.invName, money(inv[i])]])]);
 }
 function renderBacktest() {
-  const b = D.bt, n = b.months.length, vals = SERIES.map((k) => plan(b.eq[k])), inv = invested(n), P = principal();
-  $('bt-final').textContent = money(vals[3][n - 1]); $('bt-inv').textContent = `混合 · 累計投入 ${money(inv[n - 1])}`;
+  const b = D.bt, n = b.months.length, has = (o) => SERIES.every((k) => o && o[k]);
+  if (!has(b.eq)) { $('bt-final').textContent = '—'; $('bt-inv').textContent = '回測資料更新中'; return; }
+  const vals = SERIES.map((k) => plan(b.eq[k])), inv = invested(n), P = principal(), st = Object.fromEntries(b.stats.map((s) => [s.key, s]));
+  $('bt-final').textContent = money(vals[BL][n - 1]); $('bt-inv').textContent = `混合 · 累計投入 ${money(inv[n - 1])}`;
   $('bt-range').textContent = `${b.start} → ${b.end} · 訊號變更 ${b.changes} 次 · 已扣手續費與證交稅`;
-  $('grow').replaceChildren(...SERIES.map((k, j) => { const c = el('div', null, 'card tile'), nm = el('span', null, 'lab'), sw = el('i', null, 'sw'); sw.style.background = COLORS[j]; sw.style.marginRight = '5px'; nm.append(sw, NAMES[j]); c.append(nm, el('b', money(vals[j][n - 1])), el('span', `${f2(b.stats[j].final)}x`)); return c; }));
+  $('grow').replaceChildren(...SERIES.map((k, j) => { const c = el('div', null, 'card tile'), nm = el('span', null, 'lab'), sw = el('i', null, 'sw'); sw.style.background = COLORS[j]; sw.style.marginRight = '5px'; nm.append(sw, NAMES[j]); c.append(nm, el('b', money(vals[j][n - 1])), el('span', `${f2(st[k].final)}x`)); return c; }));
   $('eq-legend').replaceChildren(...NAMES.map((nm, j) => { const s = el('span'), sw = el('i', null, 'sw'); sw.style.background = COLORS[j]; s.append(sw, nm); return s; }), (() => { const s = el('span'); s.append(el('i', null, 'ln lv'), '累計投入'); return s; })());
   lineChart($('eq-chart'), b.months, vals, inv, { aria: '近 10 年資產走勢與累計投入', everyYears: 2, log: false, invName: '累計投入' });
-  $('bt-stats').replaceChildren(...b.stats.map((s, j) => tr([NAMES[j], pct(s.cagr), pct(s.mdd), f0(s.worst) + '%', f2(s.final) + 'x'], s.key === 'blend' ? 'hl' : '')));
+  $('bt-stats').replaceChildren(...SERIES.map((k, j) => tr([NAMES[j], pct(st[k].cagr), pct(st[k].mdd), f0(st[k].worst) + '%', f2(st[k].final) + 'x'], k === 'blend' ? 'hl' : '')));
   $('yearend').replaceChildren(...d3.range(n).filter((i) => !i || i === n - 1 || b.months[i].slice(5) === '12').map((i) => tr([[b.months[i], 'd'], money(inv[i]), ...vals.map((v) => money(v[i]))])));
   $('yearly').replaceChildren(...b.yearly.map((r) => tr([[r.year, 'd'], ...SERIES.map((k) => [sgn(r[k]), tone(r[k])])])));
-  if (S) {
-    $('stress-stats').replaceChildren(...S.stats.map((s, j) => tr([NAMES[j], pct(s.all_cagr), pct(s.all_mdd), pct(s.bear_cagr), pct(s.bear_mdd), pct(s.bull_cagr), pct(s.bull_mdd)], s.key === 'blend' ? 'hl' : '')));
+  if (S && has(S.eq)) {
+    const ss = Object.fromEntries(S.stats.map((s) => [s.key, s]));
+    $('stress-stats').replaceChildren(...SERIES.map((k, j) => { const s = ss[k]; return tr([NAMES[j], pct(s.all_cagr), pct(s.all_mdd), pct(s.bear_cagr), pct(s.bear_mdd), pct(s.bull_cagr), pct(s.bull_mdd)], k === 'blend' ? 'hl' : ''); }));
     lineChart($('stress-chart'), S.q, SERIES.map((k) => S.eq[k].map((e) => P * e)), S.q.map(() => P), { aria: '2000 年起同一筆本金的金額，對數刻度', everyYears: 5, log: true, invName: '本金' });
     $('stress-cap').textContent = `對數刻度 · 不含每月存入 · 固定結果（算到 ${S.asof}）`;
   }
