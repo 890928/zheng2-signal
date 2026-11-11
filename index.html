@@ -382,8 +382,10 @@ function gcard(key, name, v, text, chg, foot) {
 const tile = (name, text, chg, sub) => { const c = el('div', null, 'card tile'), s = el('span'); if (chg != null) s.append(el('span', sg2(chg), tone(chg)), sub ? ' · ' : ''); if (sub) s.append(sub); c.append(el('span', name, 'lab'), el('b', text), s); return c; };
 
 /* ── 部位計算 ── */
+const livePx = () => { const l = D.live; return l && l.date > D.today.date && l.px50 && l.pxL ? l : null; };
 function position(w) {
-  const t = Object.assign({}, D.today, w || {}), add = val('in-add');
+  const t = Object.assign({}, D.today, w || {}), add = val('in-add'), lp = livePx();
+  if (lp) { t.px50 = lp.px50; t.pxL = lp.pxL; }
   const cur = { L: val('in-sl') * t.pxL, s50: val('in-s50') * t.px50, cash: val('in-cash') + add }, tot = cur.L + cur.s50 + cur.cash;
   if (!(tot > 0)) return null;
   const tgt = { L: t.wL / 100 * tot, s50: t.w50 / 100 * tot, cash: t.wC / 100 * tot };
@@ -463,11 +465,12 @@ function renderToday() {
 /* ── 試算 ── */
 function renderSizing() {
   const t = D.today, z = position(), body = $('size-body'); body.replaceChildren(); renderMine(); renderWhatIf();
-  $('size-note').textContent = `股數以 ${md(t.px_date)} 收盤價估算（0050 ${f2(t.px50)}、00631L ${f2(t.pxL)}），未含交易成本。`;
+  const lp = livePx(), hm = lp ? new Date(lp.at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei' }) : '';
+  $('size-note').textContent = lp ? `股數以 ${hm} 盤中價估算（0050 ${f2(lp.px50)}、00631L ${f2(lp.pxL)}），未含交易成本。` : `股數以 ${md(t.px_date)} 收盤價估算（0050 ${f2(t.px50)}、00631L ${f2(t.pxL)}）${t.px_est ? '，收盤價為估計值' : ''}，未含交易成本。`;
   if (!z) { $('size-chip').textContent = '填入持股'; $('size-chip').className = 'chip'; $('size-meta').textContent = ''; return; }
   $('size-chip').textContent = z.need ? '需要調整' : '不用動'; $('size-chip').className = 'chip' + (z.need ? ' act' : '');
   $('size-meta').textContent = `偏離 ${f1(z.drift)} / 門檻 ${D.drift} · 總資金 ${f0(z.tot)}`;
-  [['L', '00631L', t.pxL], ['s50', '0050', t.px50], ['cash', '現金', 0]].forEach(([k, name, px]) => {
+  [['L', '00631L', z.t.pxL], ['s50', '0050', z.t.px50], ['cash', '現金', 0]].forEach(([k, name, px]) => {
     const diff = z.tgt[k] - z.cur[k];
     body.append(tr([name, f0(z.cur[k]), f0(z.cur[k] / z.tot * 100) + '%', f0(z.tgt[k]), f0(z.tgt[k] / z.tot * 100) + '%',
       px ? (diff >= 0 ? '買 ' : '賣 ') + f0(Math.trunc(Math.abs(diff) / px)) + ' 股' : (diff >= 0 ? '+' : '−') + f0(Math.abs(diff))]));

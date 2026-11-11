@@ -89,6 +89,20 @@ def fetch(sym, years):
     return {"dates": dates, "close": close, "adj": adj, "live": now}
 
 
+def last_intraday(sym, date):
+    """Yahoo 盤中常缺前一個交易日的日線。用小時線補該日最後一筆價格（和正式收盤價可能差一點）。"""
+    try:
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(sym)}?range=5d&interval=1h"
+        r = json.load(_open(url, UAS[0]))["chart"]["result"][0]
+        off, px = r["meta"].get("gmtoffset", 0), None
+        for ts, c in zip(r["timestamp"], r["indicators"]["quote"][0]["close"]):
+            if c is not None and dt.datetime.fromtimestamp(ts + off, dt.timezone.utc).strftime("%Y-%m-%d") == date:
+                px = float(c)
+        return px
+    except Exception:  # noqa: BLE001
+        return None
+
+
 # ───────────────────────────── 融資資料（只供參考，不影響訊號） ─────────────────────────────
 TWSE = "https://www.twse.com.tw/rwd/zh/marginTrading/"
 TWSE_REF = "https://www.twse.com.tw/dashboard/zh/credit/margin.html"
@@ -398,14 +412,20 @@ def main():
     today.update({"chg": round((rows[-1]["close"] / rows[-2]["close"] - 1) * 100, 2), "vix_chg": day_chg(vix, "close", t["date"], True),
                   "px50_chg": day_chg(p50, "adj", t["date"]), "pxL_chg": day_chg(pl, "close", t["date"])})
     ot = old.get("today", {})
-    if (a50[0] != t["date"] or al[0] != t["date"]) and old.get("asof") == t["date"] and ot.get("px_date") == t["date"]:
-        # Yahoo 盤中偶爾會缺前一個交易日的 ETF 日線：沿用上一次抓到的收盤價
-        today.update({k: ot[k] for k in ("px50", "pxL", "px_date", "px50_chg", "pxL_chg") if k in ot})
+    if a50[0] != t["date"] or al[0] != t["date"]:          # Yahoo 盤中常缺前一個交易日的 ETF 日線
+        if old.get("asof") == t["date"] and ot.get("px_date") == t["date"] and not ot.get("px_est"):
+            today.update({k: ot[k] for k in ("px50", "pxL", "px_date", "px50_chg", "pxL_chg") if k in ot})   # 沿用先前抓到的正式收盤價
+        else:
+            e50, el = last_intraday("0050.TW", t["date"]), last_intraday("00631L.TW", t["date"])
+            if e50 and el:                                  # 用小時線補，標記為估計值
+                today.update({"px50_chg": round((e50 / a50[1] - 1) * 100, 2), "pxL_chg": round((el / al[1] - 1) * 100, 2),
+                              "px50": round(e50, 2), "pxL": round(el, 2), "px_date": t["date"], "px_est": 1})
 
     closes = tw["close"]
     data = {"generated": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "asof": t["date"],
             "today": today, "levels": levels, "daily": daily, "drift": int(DRIFT * 100),
-            "margin": margin_block(fetch_new=tw["live"] is None), "live": tw["live"],
+            "margin": margin_block(fetch_new=tw["live"] is None),
+            "live": dict(tw["live"], px50=(p50["live"] or {}).get("px"), pxL=(pl["live"] or {}).get("px")) if tw["live"] else None,
             # 下一個交易日收在某個價位時要怎麼算（給網頁的盤中試算用）
             "next": {"hi251": round(max(closes[-(HIGH_WIN - 1):]), 2), "sum199": round(sum(closes[-(MA_N - 1):]), 2),
                      "lvl": t["lvl"], "on": int(t["on"])},
