@@ -217,6 +217,11 @@ ol.steps li, ul.rules li { margin: 5px 0; }
       <div class="trades" id="wi-trades"></div>
     </div>
 
+    <div class="card" id="stress">
+      <h2 id="stress-h">部位壓力 · 若不調整</h2>
+      <div class="scroll"><table><thead id="stress-head"></thead><tbody id="stress-body"></tbody></table></div>
+    </div>
+
     <div class="sec"><h2>指標</h2><div class="legend"><span><i class="sw" style="background:var(--zin)"></i>偏進場的極端</span><span><i class="sw" style="background:var(--zout)"></i>過熱</span></div></div>
     <div class="board" id="board"></div>
     <div class="tiles six" id="tiles"></div>
@@ -329,6 +334,8 @@ ol.steps li, ul.rules li { margin: 5px 0; }
         <li>壓力測試最大回撤約 67%（2000–2008）。</li>
         <li>VIX、融資餘額、擔保維持率與極端值統計只供參考，不影響訊號。</li>
         <li>回測對照：50:50 是 00631L 與現金各半、偏離 10 個百分點再平衡；純逆勢是只用逆勢桶。</li>
+        <li>收盤價以證交所公布的為準；標示「待官方核對」時用的是 Yahoo 的暫定價，訊號通知會等核對後才發。</li>
+        <li>部位壓力是估算：00631L 以兩倍複利計，實際會受波動與折溢價影響；也沒算照規則中途調整的效果。</li>
         <li>2015/9 以前的 00631L 為合成資料；00631L 的額外報酬近年已縮小。</li>
       </ul>
       <p class="cap">資料：Yahoo Finance、證交所臺股儀表板。產生於 <span class="n" id="generated">—</span>。輸入的持股與本金只存在本機瀏覽器。</p>
@@ -423,11 +430,25 @@ function renderMine() {
   if (z.need && z.trades.length) { const w = el('div', null, 'trades'); z.trades.forEach((x) => w.append(el('span', x, 'trade'))); m.append(w); }
 }
 
+/* ── 部位壓力：指數再跌 x% 時，不調整的部位會變多少（00631L 以兩倍複利估算） ── */
+function renderStress() {
+  const t = D.today, z = position(), head = el('tr'), body = $('stress-body');
+  (z ? ['加權指數', '部位變化', '幅度', '剩餘資產'] : ['加權指數', '00631L', '0050', '目標配置整體']).forEach((h) => head.append(el('th', h)));
+  $('stress-head').replaceChildren(head);
+  $('stress-h').textContent = z ? '部位壓力 · 你的持股若不調整' : '部位壓力 · 照目標配置、若不調整';
+  body.replaceChildren(...[-10, -20, -30].map((x) => {
+    const s = x / 100, l = (1 + s) * (1 + s) - 1;
+    if (z) { const d = z.cur.L * l + z.cur.s50 * s; return tr([`${x}%（${f0(t.close * (1 + s))}）`, ['−' + money(-d), 'dn'], pct(d / z.tot * 100), money(z.tot + d)]); }
+    return tr([`${x}%（${f0(t.close * (1 + s))}）`, pct(l * 100), pct(s * 100), [pct((t.wL * l + t.w50 * s)), 'dn']]);
+  }));
+}
+
 /* ── 今日 ── */
 function renderToday() {
   const t = D.today, d = D.daily, n = d.date.length, M = D.margin || {}, K = M.keep || { date: [] }, kn = K.date.length;
   const days = Math.floor((Date.now() - new Date(t.date + 'T13:30:00+08:00').getTime()) / 864e5);
-  $('asof').textContent = `${md(t.date)} 收盤` + (days >= 5 ? ` · ${days} 天未更新` : ''); $('asof').classList.toggle('stale', days >= 5);
+  const unconf = t.confirmed === 0;
+  $('asof').textContent = `${md(t.date)} 收盤` + (days >= 5 ? ` · ${days} 天未更新` : unconf ? ' · 待官方核對' : t.confirmed ? ' · 已核對' : ''); $('asof').classList.toggle('stale', days >= 5 || unconf);
   [['wL', f0], ['w50', f0], ['wC', f0]].forEach(([k, f]) => { $(k).textContent = f(t[k]); });
   $('exp').textContent = f2(t.exp) + 'x'; $('lvlword').textContent = t.lvl ? `第 ${t.lvl} 階 · 正二 ${t.aL}%` : '未觸發'; $('onword').textContent = t.on ? '進場' : '出場';
   const bar = $('allocbar'); bar.replaceChildren();
@@ -438,7 +459,7 @@ function renderToday() {
   $('hero').classList.toggle('is-act', !!t.changed);
   $('sig-chip').textContent = t.changed ? '訊號變更' : '訊號不變'; $('sig-chip').className = 'chip' + (t.changed ? ' act' : '');
   $('sig-msg').textContent = t.changed ? `下一個交易日收盤前調整${tpe > t.date ? '（今天有開市就是今天）' : ''}` : '沒有因訊號要做的調整';
-  renderMine();
+  renderMine(); renderStress();
   const live = D.live && D.live.date > t.date ? D.live : null, pxIn = $('in-px');
   if (!pxIn.dataset.touched) pxIn.value = live ? Math.round(live.px) : t.close;
   $('wi-src').textContent = live ? `預設為 ${new Date(live.at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei' })} 的盤中價，可改` : '預設為最新收盤，可改成現價';
@@ -465,7 +486,7 @@ function renderToday() {
 
 /* ── 試算 ── */
 function renderSizing() {
-  const t = D.today, z = position(), body = $('size-body'); body.replaceChildren(); renderMine(); renderWhatIf();
+  const t = D.today, z = position(), body = $('size-body'); body.replaceChildren(); renderMine(); renderWhatIf(); renderStress();
   const lp = livePx(), hm = lp ? new Date(lp.at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei' }) : '';
   $('size-note').textContent = lp ? `股數以 ${hm} 盤中價估算（0050 ${f2(lp.px50)}、00631L ${f2(lp.pxL)}），未含交易成本。` : `股數以 ${md(t.px_date)} 收盤價估算（0050 ${f2(t.px50)}、00631L ${f2(t.pxL)}）${t.px_est ? '，收盤價為估計值' : ''}，未含交易成本。`;
   if (!z) { $('size-chip').textContent = '填入持股'; $('size-chip').className = 'chip'; $('size-meta').textContent = ''; return; }

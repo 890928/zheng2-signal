@@ -195,6 +195,24 @@ def margin_block(fetch_new=True):
     return out
 
 
+def official_closes(asof, old):
+    """證交所公布的加權指數收盤價（當月每日）。回傳 {日期: 收盤}；抓不到回傳 {}。
+    同一個資料日已經核對過就直接沿用，不重複請求。"""
+    cache = old.get("official") or {}
+    if asof in cache and old.get("asof") == asof and old.get("today", {}).get("confirmed"):
+        return cache
+    try:
+        r = fetch_json(f"https://www.twse.com.tw/rwd/zh/afterTrading/FMTQIK?response=json&date={asof[:4]}{asof[5:7]}01")
+        out = {}
+        for row in r.get("data") or []:
+            y, m, d = row[0].split("/")
+            out[f"{int(y) + 1911}-{m}-{d}"] = float(row[4].replace(",", ""))
+        return out
+    except Exception as e:  # noqa: BLE001
+        print(f"[警告] 官方收盤價沒有抓到：{e}", file=sys.stderr)
+        return {}
+
+
 # ───────────────────────────── 規則重播 ─────────────────────────────
 def replay(dates, closes):
     rows, lvl, on, prev = [], 0, True, None
@@ -306,18 +324,22 @@ def zone_of(ext, key, v):
 
 def notify(data, old, ext):
     """有新事件時把通知的標題與內文寫到 NOTIFY_DIR，交給 workflow 開 Issue。同一件事只通知一次。"""
+    data["notified"] = prev = old.get("notified", "")
     out_dir = os.environ.get("NOTIFY_DIR")
     if not out_dir:
         return
-    t, ot, md = data["today"], old.get("today", {}), data["asof"][5:].replace("-", "/")
+    t, asof, md = data["today"], data["asof"], data["asof"][5:].replace("-", "/")
     tgt = f"00631L {t['wL']}% / 0050 {t['w50']}% / 現金 {t['wC']}%"
-    same_day = old.get("asof") == data["asof"]
-    same_tgt = (ot.get("wL"), ot.get("w50")) == (t["wL"], t["w50"])
-    events = []
-    if t["changed"] and not (same_day and same_tgt and ot.get("changed")):
-        events.append(f"訊號變更 {md}：{tgt}")
-    elif same_day and ot.get("changed") and not t["changed"]:
-        events.append(f"更正 {md}：收盤價修正後訊號沒有變更，目標維持 {tgt}")
+    late = asof < dt.datetime.now(dt.timezone(dt.timedelta(hours=8))).strftime("%Y-%m-%d")   # 已經隔天還沒核對到
+    key, events = f"{asof}|{t['wL']}|{t['w50']}", []
+    if t["changed"]:
+        if (t.get("confirmed") or late) and prev != key:
+            note = "" if t.get("confirmed") else "（未取得官方收盤價核對）"
+            events.append((f"更正 {md}：目標改為 {tgt}" if prev.startswith(asof + "|") else f"訊號變更 {md}：{tgt}") + note)
+            data["notified"] = key
+    elif prev.startswith(asof + "|") and not prev.endswith("|none"):
+        events.append(f"更正 {md}：收盤價確認後訊號沒有變更，目標維持 {tgt}")
+        data["notified"] = asof + "|none"
     names = {k: v["name"] for k, v in ext.get("ind", {}).items()}
     for k, z in data["zones"].items():
         if z and z != (old.get("zones") or {}).get(k) and "zones" in old:
@@ -335,7 +357,7 @@ def notify(data, old, ext):
     body = [f"@{owner}" if owner else "", "", *[f"- {e}" for e in events], "",
             "| 項目 | 數值 |", "|---|---|",
             f"| 資料日 | {data['asof']} |", f"| 目標配置 | {tgt}（曝險 {t['exp']:.2f}x） |",
-            f"| 加權指數 | {t['close']:,}（{t['chg']:+.2f}%） |", f"| 距一年高點 | {t['dd']}% |", f"| 距 200 日線 | {t['dist']:+}% |",
+            f"| 加權指數 | {t['close']:,}（{t['chg']:+.2f}%）{'，已用證交所收盤價核對' if t.get('confirmed') else '，尚未核對'} |", f"| 距一年高點 | {t['dd']}% |", f"| 距 200 日線 | {t['dist']:+}% |",
             f"| VIX | {t['vix']} |"]
     if m.get("bal"):
         body.append(f"| 融資餘額 20 日變化 | {m['bal']['chg20']:+}%（{m['bal']['date']}） |")
@@ -366,9 +388,15 @@ def main():
     p50 = fetch("0050.TW", BT_YEARS + 1.6)
     pl = fetch("00631L.TW", BT_YEARS + 1.6)
     vix = fetch("^VIX", 4.5)
+    old = _load("data.json", {})
+    official = official_closes(tw["dates"][-1], old)
+    yahoo_last = tw["close"][-1]
+    for i, d in enumerate(tw["dates"]):            # 有官方數字的日子一律用官方收盤價
+        if d in official:
+            tw["close"][i] = official[d]
+    confirmed = tw["dates"][-1] in official
     rows = replay(tw["dates"], tw["close"])
     t = rows[-1]
-    old = _load("data.json", {})
 
     levels = []
     for j, (th, a) in enumerate(LADDER):
@@ -411,7 +439,8 @@ def main():
         xs = [v for x, v in zip(series["dates"], series[key]) if x < d or (x == d and not strict)]
         return round((xs[-1] / xs[-2] - 1) * 100, 2) if len(xs) >= 2 else None
 
-    today.update({"chg": round((rows[-1]["close"] / rows[-2]["close"] - 1) * 100, 2), "vix_chg": day_chg(vix, "close", t["date"], True),
+    today.update({"confirmed": int(confirmed), "yahoo": round(yahoo_last, 2),
+                  "chg": round((rows[-1]["close"] / rows[-2]["close"] - 1) * 100, 2), "vix_chg": day_chg(vix, "close", t["date"], True),
                   "px50_chg": day_chg(p50, "adj", t["date"]), "pxL_chg": day_chg(pl, "close", t["date"])})
     ot = old.get("today", {})
     if a50[0] != t["date"] or al[0] != t["date"]:          # Yahoo 盤中常缺前一個交易日的 ETF 日線
@@ -431,7 +460,8 @@ def main():
             # 下一個交易日收在某個價位時要怎麼算（給網頁的盤中試算用）
             "next": {"hi251": round(max(closes[-(HIGH_WIN - 1):]), 2), "sum199": round(sum(closes[-(MA_N - 1):]), 2),
                      "lvl": t["lvl"], "on": int(t["on"])},
-            "rule": {"ladder": LADDER, "ma": MA_N, "buf": BUF, "bucket": BUCKET}}
+            "rule": {"ladder": LADDER, "ma": MA_N, "buf": BUF, "bucket": BUCKET},
+            "official": {d: v for d, v in official.items() if d[:7] == t["date"][:7]}}
     ext = _load("extremes.json", {})
     bal = data["margin"].get("bal") or {}
     data["zvals"] = {"dd": f"{today['dd']}%", "dist": f"{today['dist']:+}%", "vix": f"{today['vix']}", "m20": f"{bal.get('chg20', 0):+}%"}
@@ -444,10 +474,10 @@ def main():
         if "bt" not in old:
             raise
         data["bt"], data["bt_stale"] = old["bt"], True
+    notify(data, old, ext)
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
-    notify(data, old, ext)
     print(f"資料日 {t['date']}：00631L {today['wL']}% / 0050 {today['w50']}% / 現金 {today['wC']}%"
           f"｜回測 {data['bt']['start']} ~ {data['bt']['end']}")
 
