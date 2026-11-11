@@ -99,6 +99,14 @@ section[data-tab] { display: grid; gap: 10px; padding-top: 10px; min-width: 0; }
 .trades { display: flex; gap: 6px; flex-wrap: wrap; flex-basis: 100%; }
 .trade { font: 600 13px var(--mono); border: 1px solid var(--line); border-radius: 6px; padding: 4px 9px; }
 
+.wi-top { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
+.wi-top input { width: 8.5em; padding: 7px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--ink); font-size: 16px; text-align: right; }
+.wi-top .cap { margin: 0; }
+.wi-out { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; margin-top: 10px; }
+.wi-out b { font: 700 20px var(--mono); letter-spacing: -.01em; }
+.wi-out .n { font-size: 12.5px; color: var(--mut); }
+#wi-trades { margin-top: 8px; }
+
 /* 指標卡與量尺 */
 .board { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
 .g-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -203,6 +211,11 @@ ol.steps li, ul.rules li { margin: 5px 0; }
       </div>
     </div>
     <div class="card mine" id="mine"></div>
+    <div class="card" id="whatif">
+      <div class="wi-top"><label class="lab" for="in-px">盤中試算 · 若收在</label><input id="in-px" type="number" inputmode="decimal" step="1" min="1"><span class="cap" id="wi-src"></span></div>
+      <div class="wi-out"><span class="chip" id="wi-chip">—</span><b id="wi-target">—</b><span class="n" id="wi-meta"></span></div>
+      <div class="trades" id="wi-trades"></div>
+    </div>
 
     <div class="sec"><h2>指標</h2><div class="legend"><span><i class="sw" style="background:var(--zin)"></i>偏進場的極端</span><span><i class="sw" style="background:var(--zout)"></i>過熱</span></div></div>
     <div class="board" id="board"></div>
@@ -306,6 +319,7 @@ ol.steps li, ul.rules li { margin: 5px 0; }
         <li>「我的部位」顯示不用動就結束。</li>
         <li>顯示需要調整時，隔天收盤前照股數下單。</li>
         <li>每月新存的錢填在「試算」的本次新資金。</li>
+        <li>調整日收盤前，在「今日」的盤中試算輸入現價，看收盤後訊號會不會再變。</li>
       </ol>
     </div>
     <div class="card">
@@ -368,8 +382,8 @@ function gcard(key, name, v, text, chg, foot) {
 const tile = (name, text, chg, sub) => { const c = el('div', null, 'card tile'), s = el('span'); if (chg != null) s.append(el('span', sg2(chg), tone(chg)), sub ? ' · ' : ''); if (sub) s.append(sub); c.append(el('span', name, 'lab'), el('b', text), s); return c; };
 
 /* ── 部位計算 ── */
-function position() {
-  const t = D.today, add = val('in-add');
+function position(w) {
+  const t = Object.assign({}, D.today, w || {}), add = val('in-add');
   const cur = { L: val('in-sl') * t.pxL, s50: val('in-s50') * t.px50, cash: val('in-cash') + add }, tot = cur.L + cur.s50 + cur.cash;
   if (!(tot > 0)) return null;
   const tgt = { L: t.wL / 100 * tot, s50: t.w50 / 100 * tot, cash: t.wC / 100 * tot };
@@ -377,6 +391,27 @@ function position() {
   const sh = (k, px) => Math.trunc(Math.abs(tgt[k] - cur[k]) / px);
   const trades = [['L', '00631L', t.pxL], ['s50', '0050', t.px50]].filter(([k, , px]) => sh(k, px) > 0).map(([k, name, px]) => `${tgt[k] >= cur[k] ? '買' : '賣'} ${name} ${f0(sh(k, px))} 股`);
   return { t, add, cur, tgt, tot, drift, need: !!t.changed || drift > D.drift, trades };
+}
+
+/* ── 盤中試算：下一個交易日若收在 px，照規則重算一次 ── */
+function whatIf(px) {
+  const nx = D.next, R = D.rule, hi = Math.max(nx.hi251, px), dd = px / hi - 1, ma = (nx.sum199 + px) / R.ma;
+  let lvl = nx.lvl, on = !!nx.on;
+  if (dd >= 0) lvl = 0;
+  R.ladder.forEach(([th], j) => { if (dd <= -th && j + 1 > lvl) lvl = j + 1; });
+  if (px > ma * (1 + R.buf)) on = true; else if (px < ma * (1 - R.buf)) on = false;
+  const aL = lvl ? R.ladder[lvl - 1][1] : 0, wL = Math.round((R.bucket * aL + (1 - R.bucket) * (on ? 1 : 0)) * 100), w50 = Math.round(R.bucket * (1 - aL) * 100);
+  return { dd: dd * 100, dist: (px / ma - 1) * 100, lvl, on, wL, w50, wC: 100 - wL - w50, changed: wL !== D.today.wL || w50 !== D.today.w50 };
+}
+function renderWhatIf() {
+  if (!D.next || !D.rule) { $('whatif').hidden = true; return; }
+  const px = +$('in-px').value, tr0 = $('wi-trades'); tr0.replaceChildren();
+  if (!(px > 0)) { $('wi-chip').textContent = '輸入現價'; $('wi-chip').className = 'chip'; $('wi-target').textContent = '—'; $('wi-meta').textContent = ''; return; }
+  const w = whatIf(px);
+  $('wi-chip').textContent = w.changed ? '收盤後訊號會變' : '訊號不變'; $('wi-chip').className = 'chip' + (w.changed ? ' act' : '');
+  $('wi-target').textContent = `${w.wL} / ${w.w50} / ${w.wC}`;
+  $('wi-meta').textContent = `距高點 ${pct(w.dd)} · 距 200 日線 ${sgn(w.dist)} · 逆勢第 ${w.lvl} 階 · 順勢${w.on ? '進場' : '出場'}`;
+  if (w.changed) { const z = position({ wL: w.wL, w50: w.w50, wC: w.wC }); if (z) z.trades.forEach((x) => tr0.append(el('span', '屆時 ' + x, 'trade'))); }
 }
 function renderMine() {
   const z = position(), m = $('mine'); m.replaceChildren(el('span', '我的部位', 'lab'));
@@ -401,6 +436,10 @@ function renderToday() {
   $('sig-chip').textContent = t.changed ? '訊號變更' : '訊號不變'; $('sig-chip').className = 'chip' + (t.changed ? ' act' : '');
   $('sig-msg').textContent = t.changed ? `下一個交易日收盤前調整${tpe > t.date ? '（今天有開市就是今天）' : ''}` : '沒有因訊號要做的調整';
   renderMine();
+  const live = D.live && D.live.date > t.date ? D.live : null, pxIn = $('in-px');
+  if (!pxIn.dataset.touched) pxIn.value = live ? Math.round(live.px) : t.close;
+  $('wi-src').textContent = live ? `預設為 ${new Date(live.at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei' })} 的盤中價，可改` : '預設為最新收盤，可改成現價';
+  renderWhatIf();
 
   const board = [
     gcard('dd', '距一年高點', t.dd, pct(t.dd), null, `高點 ${f0(t.hi)}`),
@@ -423,7 +462,7 @@ function renderToday() {
 
 /* ── 試算 ── */
 function renderSizing() {
-  const t = D.today, z = position(), body = $('size-body'); body.replaceChildren(); renderMine();
+  const t = D.today, z = position(), body = $('size-body'); body.replaceChildren(); renderMine(); renderWhatIf();
   $('size-note').textContent = `股數以 ${md(t.px_date)} 收盤價估算（0050 ${f2(t.px50)}、00631L ${f2(t.pxL)}），未含交易成本。`;
   if (!z) { $('size-chip').textContent = '填入持股'; $('size-chip').className = 'chip'; $('size-meta').textContent = ''; return; }
   $('size-chip').textContent = z.need ? '需要調整' : '不用動'; $('size-chip').className = 'chip' + (z.need ? ' act' : '');
@@ -582,6 +621,7 @@ let rz, lastW = innerWidth; window.addEventListener('resize', () => { if (innerW
 document.querySelectorAll('[data-range]').forEach((b) => b.addEventListener('click', () => { range = +b.dataset.range; store.set('range', range); drawPrice(); }));
 ['in-s50', 'in-sl', 'in-cash', 'in-add'].forEach((id) => { $(id).value = store.get(id, ''); $(id).addEventListener('input', () => { store.set(id, $(id).value); if (D) renderSizing(); }); });
 [['in-principal', 1000000], ['in-monthly', 0]].forEach(([id, def]) => { $(id).value = store.get(id, def); $(id).addEventListener('input', () => { store.set(id, $(id).value); if (D) renderBacktest(); }); });
+$('in-px').addEventListener('input', () => { $('in-px').dataset.touched = '1'; if (D) renderWhatIf(); });
 range = [126, 252, 750].includes(+store.get('range', 252)) ? +store.get('range', 252) : 252;
 
 (async () => {

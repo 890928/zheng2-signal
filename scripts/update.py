@@ -79,11 +79,14 @@ def fetch(sym, years):
         ts.append(t)
     per = r["meta"].get("currentTradingPeriod", {}).get("regular", {})
     live = bool(per) and bool(ts) and per.get("start", 0) <= ts[-1] and time.time() < per.get("end", 0)
-    if live:                                   # 盤中未收盤的那一根不用
+    now = None
+    if live:                                   # 盤中未收盤的那一根不用來算訊號，只留作盤中試算的預設值
+        at = r["meta"].get("regularMarketTime") or ts[-1]
+        now = {"date": dates[-1], "px": round(close[-1], 2), "at": dt.datetime.fromtimestamp(at, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
         dates, close, adj = dates[:-1], close[:-1], adj[:-1]
     if len(dates) < 30:
         raise RuntimeError(f"{sym} 資料筆數異常：{len(dates)}")
-    return {"dates": dates, "close": close, "adj": adj}
+    return {"dates": dates, "close": close, "adj": adj, "live": now}
 
 
 # ───────────────────────────── 融資資料（只供參考，不影響訊號） ─────────────────────────────
@@ -133,21 +136,27 @@ def _merge(hist, key, rows):
     return {key: dates, **{c: [by[d][c] for d in dates] for c in cols}}
 
 
-def margin_block():
+def margin_block(fetch_new=True):
     """官方擔保維持率與融資餘額（只供參考）。歷史累積在 data/*_hist.json；抓不到就用已累積的資料。"""
     keep = _load("keep_hist.json", {"date": [], "rate": [], "call": [], "exe": []})
     try:   # 證交所臺股儀表板：全市場擔保維持率、低於 130% 戶數、應處分戶數
+        if not fetch_new:
+            raise LookupError
         days = 60 if len(keep["date"]) < 30 else 10
         r = fetch_json(TWSE + f"BFIJ3U_TREND?response=json&days={days}", TWSE_REF)
         if r.get("stat") == "OK" and r.get("data"):
             keep = _merge(keep, "date", [{"date": _iso(x["date"]), "rate": x["keepRate"], "call": x["callAccNum"], "exe": x["exeAccNum"]} for x in r["data"]])
             _save("keep_hist.json", keep)
+    except LookupError:
+        pass
     except Exception as e:  # noqa: BLE001
         print(f"[警告] 擔保維持率沒有更新：{e}", file=sys.stderr)
 
     bal = _load("margin_hist.json", {"date": [], "amt": []})
     mv = None
     try:   # 證交所：上市融資餘額（仟元）與上市總市值（億元），近 30 個交易日
+        if not fetch_new:
+            raise LookupError
         time.sleep(3)
         r = fetch_json(TWSE + "MI_MARGN_TREND?response=json", TWSE_REF)
         if r.get("stat") == "OK" and r.get("data"):
@@ -156,6 +165,8 @@ def margin_block():
             bal = _merge(bal, "date", [{"date": _iso(x["date"]), "amt": round(x["marginAmt"] / 1e5)} for x in r["data"]])
             mv = r["data"][-1]["marketValue"]
             _save("margin_hist.json", bal)
+    except LookupError:
+        pass
     except Exception as e:  # noqa: BLE001
         print(f"[警告] 融資餘額沒有更新：{e}", file=sys.stderr)
 
@@ -163,8 +174,7 @@ def margin_block():
     amt, dates = bal["amt"], bal["date"]
     if len(amt) > 21:
         chg = lambda n: round((amt[-1] / amt[-1 - n] - 1) * 100, 1)  # noqa: E731
-        out["bal"] = {"date": dates[-1], "amt": amt[-1], "chg1": chg(1), "chg5": chg(5), "chg20": chg(20),
-                      "ratio": round(amt[-1] / mv * 100, 2) if mv else None}
+        out["bal"] = {"date": dates[-1], "amt": amt[-1], "chg1": chg(1), "chg5": chg(5), "chg20": chg(20)}
         i0 = max(20, len(amt) - 750)
         out["m20"] = {"date": dates[i0:], "v": [round((amt[i] / amt[i - 20] - 1) * 100, 1) for i in range(i0, len(amt))]}
     return out
@@ -225,6 +235,8 @@ def backtest(rows, p50, pl):
     m50, ml = dict(zip(p50["dates"], p50["adj"])), dict(zip(pl["dates"], pl["close"]))
     dates = [d for d in by if d in m50 and d in ml and d >= CLEAN_FROM]
     end = dates[-1]
+    if end != rows[-1]["date"]:
+        raise RuntimeError(f"ETF 日線缺 {rows[-1]['date']}")
     y, m, d = end.split("-")
     start_target = f"{int(y) - BT_YEARS}-{m}-{d}"
     if dates[0] > start_target:
@@ -266,6 +278,61 @@ def backtest(rows, p50, pl):
     return out
 
 
+# ───────────────────────────── 通知 ─────────────────────────────
+def zone_of(ext, key, v):
+    """v 落在哪個極端區（回傳該區設定，沒有則 None）。"""
+    hit = None
+    for z in (ext.get("ind", {}).get(key, {}).get("zones") or []):
+        if v is not None and (v <= z["v"] if z["op"] == "<=" else v >= z["v"]):
+            hit = z
+    return hit
+
+
+def notify(data, old, ext):
+    """有新事件時把通知的標題與內文寫到 NOTIFY_DIR，交給 workflow 開 Issue。同一件事只通知一次。"""
+    out_dir = os.environ.get("NOTIFY_DIR")
+    if not out_dir:
+        return
+    t, ot, md = data["today"], old.get("today", {}), data["asof"][5:].replace("-", "/")
+    tgt = f"00631L {t['wL']}% / 0050 {t['w50']}% / 現金 {t['wC']}%"
+    same_day = old.get("asof") == data["asof"]
+    same_tgt = (ot.get("wL"), ot.get("w50")) == (t["wL"], t["w50"])
+    events = []
+    if t["changed"] and not (same_day and same_tgt and ot.get("changed")):
+        events.append(f"訊號變更 {md}：{tgt}")
+    elif same_day and ot.get("changed") and not t["changed"]:
+        events.append(f"更正 {md}：收盤價修正後訊號沒有變更，目標維持 {tgt}")
+    names = {k: v["name"] for k, v in ext.get("ind", {}).items()}
+    for k, z in data["zones"].items():
+        if z and z != (old.get("zones") or {}).get(k) and "zones" in old:
+            events.append(f"{names.get(k, k)} 進入「{z}」：{data['zvals'][k]}")
+    flag = os.path.join(DATA_DIR, "notify_enabled.txt")
+    if not os.path.exists(flag):
+        with open(flag, "w", encoding="utf-8") as f:
+            f.write(data["generated"] + "\n")
+        events.append("通知已啟用（測試）")
+    if not events:
+        return
+    repo, owner = os.environ.get("GITHUB_REPOSITORY", ""), os.environ.get("GITHUB_REPOSITORY_OWNER", "")
+    site = f"https://{owner}.github.io/{repo.split('/')[-1]}/" if repo and owner else ""
+    m = data["margin"]
+    body = [f"@{owner}" if owner else "", "", *[f"- {e}" for e in events], "",
+            "| 項目 | 數值 |", "|---|---|",
+            f"| 資料日 | {data['asof']} |", f"| 目標配置 | {tgt}（曝險 {t['exp']:.2f}x） |",
+            f"| 加權指數 | {t['close']:,}（{t['chg']:+.2f}%） |", f"| 距一年高點 | {t['dd']}% |", f"| 距 200 日線 | {t['dist']:+}% |",
+            f"| VIX | {t['vix']} |"]
+    if m.get("bal"):
+        body.append(f"| 融資餘額 20 日變化 | {m['bal']['chg20']:+}%（{m['bal']['date']}） |")
+    if m.get("keep", {}).get("rate"):
+        body.append(f"| 全市場擔保維持率 | {m['keep']['rate'][-1]}%（{m['keep']['date'][-1]}） |")
+    body += ["", site, "", "規則計算結果，不是投資建議。"]
+    with open(os.path.join(out_dir, "z2_title.txt"), "w", encoding="utf-8") as f:
+        f.write(events[0] + (f" 等 {len(events)} 項" if len(events) > 1 else ""))
+    with open(os.path.join(out_dir, "z2_body.md"), "w", encoding="utf-8") as f:
+        f.write("\n".join(body))
+    print("通知：" + "；".join(events))
+
+
 # ───────────────────────────── 組裝輸出 ─────────────────────────────
 def asof(series, key, d, strict=False):
     """series 在日期 d（strict 時為 d 之前）最後一筆的 (日期, 值)。"""
@@ -285,6 +352,7 @@ def main():
     vix = fetch("^VIX", 4.5)
     rows = replay(tw["dates"], tw["close"])
     t = rows[-1]
+    old = _load("data.json", {})
 
     levels = []
     for j, (th, a) in enumerate(LADDER):
@@ -329,14 +397,24 @@ def main():
 
     today.update({"chg": round((rows[-1]["close"] / rows[-2]["close"] - 1) * 100, 2), "vix_chg": day_chg(vix, "close", t["date"], True),
                   "px50_chg": day_chg(p50, "adj", t["date"]), "pxL_chg": day_chg(pl, "close", t["date"])})
-    try:
-        with open(OUT, encoding="utf-8") as f:
-            old = json.load(f)
-    except Exception:  # noqa: BLE001
-        old = {}
+    ot = old.get("today", {})
+    if (a50[0] != t["date"] or al[0] != t["date"]) and old.get("asof") == t["date"] and ot.get("px_date") == t["date"]:
+        # Yahoo 盤中偶爾會缺前一個交易日的 ETF 日線：沿用上一次抓到的收盤價
+        today.update({k: ot[k] for k in ("px50", "pxL", "px_date", "px50_chg", "pxL_chg") if k in ot})
 
+    closes = tw["close"]
     data = {"generated": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "asof": t["date"],
-            "today": today, "levels": levels, "daily": daily, "drift": int(DRIFT * 100), "margin": margin_block()}
+            "today": today, "levels": levels, "daily": daily, "drift": int(DRIFT * 100),
+            "margin": margin_block(fetch_new=tw["live"] is None), "live": tw["live"],
+            # 下一個交易日收在某個價位時要怎麼算（給網頁的盤中試算用）
+            "next": {"hi251": round(max(closes[-(HIGH_WIN - 1):]), 2), "sum199": round(sum(closes[-(MA_N - 1):]), 2),
+                     "lvl": t["lvl"], "on": int(t["on"])},
+            "rule": {"ladder": LADDER, "ma": MA_N, "buf": BUF, "bucket": BUCKET}}
+    ext = _load("extremes.json", {})
+    bal = data["margin"].get("bal") or {}
+    data["zvals"] = {"dd": f"{today['dd']}%", "dist": f"{today['dist']:+}%", "vix": f"{today['vix']}", "m20": f"{bal.get('chg20', 0):+}%"}
+    zv = {"dd": today["dd"], "dist": today["dist"], "vix": today["vix"], "m20": bal.get("chg20")}
+    data["zones"] = {k: (zone_of(ext, k, v) or {}).get("label") for k, v in zv.items()}
     try:
         data["bt"] = backtest(rows, p50, pl)
     except Exception as e:  # noqa: BLE001  回測失敗不影響每日訊號：沿用上一次的回測
@@ -347,6 +425,7 @@ def main():
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
+    notify(data, old, ext)
     print(f"資料日 {t['date']}：00631L {today['wL']}% / 0050 {today['w50']}% / 現金 {today['wC']}%"
           f"｜回測 {data['bt']['start']} ~ {data['bt']['end']}")
 
