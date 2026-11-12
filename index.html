@@ -131,6 +131,17 @@ section[data-tab] { display: grid; gap: 10px; padding-top: 10px; min-width: 0; }
 .tile b { display: block; font: 700 19px/1.3 var(--mono); letter-spacing: -.01em; margin-top: 2px; white-space: nowrap; }
 .tile > span:last-child { font: 11.5px var(--mono); color: var(--dim); }
 
+/* 盤中 */
+.live { border-left: 3px solid var(--act); }
+.lv-top, .lv-row { display: flex; align-items: baseline; gap: 6px 10px; flex-wrap: wrap; }
+.lv-top b { font: 700 28px/1.1 var(--mono); letter-spacing: -.02em; }
+.lv-top .n { font-size: 13px; } .lv-etf { color: var(--mut); flex-basis: 100%; }
+.lv-row { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); align-items: center; }
+.lv-row b { font: 700 19px var(--mono); }
+.lv-top .chip { align-self: center; }
+#wi-tbl { margin-top: 10px; }
+@media (max-width: 480px) { #wi-tbl th, #wi-tbl td { padding-left: 4px; padding-right: 4px; font-size: 12px; } #wi-tbl th { font-size: 11px; } }
+
 /* 低檔分數 */
 .sc-main { display: flex; align-items: center; gap: 14px; margin: 6px 0 10px; }
 .sc-num { font: 700 40px/1 var(--mono); letter-spacing: -.03em; white-space: nowrap; }
@@ -151,7 +162,7 @@ td:first-child { font-family: var(--sans); }
 td.d { font-family: var(--mono); }
 tr:last-child td { border-bottom: 0; }
 tr.hl td { font-weight: 700; }
-td.flag { color: var(--act); font-family: var(--sans); }
+td.flag { color: var(--act); font-family: var(--sans); } #wi-tbl td.flag { font-family: var(--mono); font-weight: 700; }
 td.zin { color: var(--zin); font-family: var(--mono); font-weight: 700; } td.zout { color: var(--zout); font-family: var(--mono); font-weight: 700; }
 
 /* 圖 */
@@ -205,6 +216,10 @@ ol.steps li, ul.rules li { margin: 5px 0; }
 
   <!-- 今日 -->
   <section data-tab="today" hidden>
+    <div class="card live" id="live" hidden>
+      <div class="lv-top"><span class="chip act" id="lv-chip">盤中</span><b id="lv-px">—</b><span class="n" id="lv-chg"></span><span class="n lv-etf" id="lv-etf"></span></div>
+      <div class="lv-row"><span class="lab">以現價計</span><b id="lv-target">—</b><span class="chip" id="lv-sig">—</span><span class="chip" id="lv-score">—</span></div>
+    </div>
     <div class="card hero" id="hero">
       <div class="hero-top"><span class="chip" id="sig-chip">—</span><span class="hero-msg" id="sig-msg"></span></div>
       <div class="alloc">
@@ -231,6 +246,7 @@ ol.steps li, ul.rules li { margin: 5px 0; }
       <div class="wi-top"><label class="lab" for="in-px">盤中試算 · 若收在</label><input id="in-px" type="number" inputmode="decimal" step="1" min="1"><span class="cap" id="wi-src"></span></div>
       <div class="wi-out"><span class="chip" id="wi-chip">—</span><b id="wi-target">—</b><span class="n" id="wi-meta"></span></div>
       <div class="trades" id="wi-trades"></div>
+      <div class="scroll" id="wi-tbl"><table><thead><tr><th>指標</th><th id="wi-h0">收盤</th><th>若收在此</th><th>門檻</th><th>達標</th></tr></thead><tbody id="wi-body"></tbody></table></div>
     </div>
 
     <div class="card" id="stress">
@@ -367,6 +383,7 @@ ol.steps li, ul.rules li { margin: 5px 0; }
         <li>壓力測試最大回撤約 67%（2000–2008）。</li>
         <li>VIX、融資餘額、擔保維持率、極端值統計與低檔分數只供參考，不影響目標配置。</li>
         <li>回測對照：50:50 是 00631L 與現金各半、偏離 10 個百分點再平衡；純逆勢是只用逆勢桶。</li>
+        <li>盤中約每 5 分鐘更新一次報價（常會延遲 5–15 分鐘，以畫面上的時間為準）。盤中的配置與分數是以現價試算，正式訊號與通知以收盤為準。</li>
         <li>收盤價以證交所公布的為準；標示「待官方核對」時用的是 Yahoo 的暫定價，訊號通知會等核對後才發。</li>
         <li>部位壓力是估算：00631L 以兩倍複利計，實際會受波動與折溢價影響；也沒算照規則中途調整的效果。</li>
         <li>2015/9 以前的 00631L 為合成資料；00631L 的額外報酬近年已縮小。</li>
@@ -436,12 +453,27 @@ function renderScore() {
   let last = -1; for (let i = n - 1; i >= 0; i--) if (d.score[i] >= s.sig) { last = i; break; }
   $('sc-cap').textContent = `達 ${s.sig} 項為訊號` + (s.n >= s.sig || last < 0 ? '' : ` · 上次 ${md(d.date[last])}`) + ` · VIX ${md(s.vix_date)} · 融資 ${md(s.bal_date)} · 不影響目標配置`;
 }
-/* 下一個交易日若收在 px 的分數（VIX、融資用最新一筆） */
+/* 下一個交易日若收在 px，五項條件各是多少（VIX、融資用最新一筆，盤中不會變） */
 function scoreIf(px) {
-  const q = D.next && D.next.score; if (!q) return null;
-  const ch = px - q.last, up = q.up + (Math.max(ch, 0) - q.up) / 14, dn = q.dn + (Math.max(-ch, 0) - q.dn) / 14, rsi = dn === 0 ? 100 : 100 - 100 / (1 + up / dn);
-  const pull = (px / Math.max(q.hi59, px) - 1) * 100, d60 = (px / ((q.sum59 + px) / 60) - 1) * 100, th = Object.fromEntries(D.score.items.map((it) => [it.k, it.th]));
-  return q.fixed + (pull <= th.pull) + (rsi <= th.rsi) + (d60 <= th.d60);
+  const q = D.next && D.next.score, s = D.score; if (!q || !s) return null;
+  const ch = px - q.last, up = q.up + (Math.max(ch, 0) - q.up) / 14, dn = q.dn + (Math.max(-ch, 0) - q.dn) / 14;
+  const v = { pull: (px / Math.max(q.hi59, px) - 1) * 100, rsi: dn === 0 ? 100 : 100 - 100 / (1 + up / dn), d60: (px / ((q.sum59 + px) / 60) - 1) * 100, vix: q.vix, m10: q.m10 };
+  const items = s.items.map((it) => { const x = v[it.k] === undefined ? it.v : v[it.k]; return Object.assign({}, it, { was: it.v, v: x, hit: x != null && (it.op === '<=' ? x <= it.th : x >= it.th) ? 1 : 0 }); });
+  return { n: items.reduce((a, it) => a + it.hit, 0), items };
+}
+/* 盤中列：現價、以現價計的配置與分數 */
+function renderLive() {
+  const t = D.today, l = D.live && D.live.date > t.date ? D.live : null; $('live').hidden = !l; if (!l) return;
+  const at = new Date(l.at), ago = Math.max(0, Math.round((Date.now() - at) / 6e4)), c = (l.px / t.close - 1) * 100;
+  $('lv-chip').textContent = `盤中 ${at.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei' })}` + (ago >= 3 ? ` · ${ago >= 90 ? Math.round(ago / 60) + ' 小時' : ago + ' 分鐘'}前` : '');
+  $('lv-px').textContent = f0(l.px); $('lv-chg').textContent = sg2(c); $('lv-chg').className = 'n ' + tone(c);
+  const etf = $('lv-etf'); etf.replaceChildren();
+  [['0050', l.px50, t.px50], ['00631L', l.pxL, t.pxL]].forEach(([nm, px, base], i) => { if (!px) return; const g = (px / base - 1) * 100; etf.append((i ? ' · ' : '') + `${nm} ${f2(px)} `, el('span', sg2(g), tone(g))); });
+  if (!D.next || !D.rule) { $('lv-target').textContent = '—'; return; }
+  const w = whatIf(l.px), s = scoreIf(l.px);
+  $('lv-target').textContent = `${w.wL} / ${w.w50} / ${w.wC}`;
+  $('lv-sig').textContent = w.changed ? '收在這裡訊號會變' : '訊號不變'; $('lv-sig').className = 'chip' + (w.changed ? ' act' : '');
+  $('lv-score').hidden = !s; if (s) { $('lv-score').textContent = `低檔分數 ${s.n}/5`; $('lv-score').className = 'chip' + (s.n >= D.score.sig ? ' in' : ''); }
 }
 function scoreChart() {
   const s = D.score, sc = E && E.score; $('score-card').hidden = !s; if (!s) return;
@@ -492,12 +524,18 @@ function whatIf(px) {
 function renderWhatIf() {
   if (!D.next || !D.rule) { $('whatif').hidden = true; return; }
   const px = +$('in-px').value, tr0 = $('wi-trades'); tr0.replaceChildren();
-  if (!(px > 0)) { $('wi-chip').textContent = '輸入現價'; $('wi-chip').className = 'chip'; $('wi-target').textContent = '—'; $('wi-meta').textContent = ''; return; }
+  if (!(px > 0)) { $('wi-chip').textContent = '輸入現價'; $('wi-chip').className = 'chip'; $('wi-target').textContent = '—'; $('wi-meta').textContent = ''; $('wi-body').replaceChildren(); return; }
   const w = whatIf(px);
   $('wi-chip').textContent = w.changed ? '收盤後訊號會變' : '訊號不變'; $('wi-chip').className = 'chip' + (w.changed ? ' act' : '');
   $('wi-target').textContent = `${w.wL} / ${w.w50} / ${w.wC}`;
-  const sn = scoreIf(px);
-  $('wi-meta').textContent = `距高點 ${pct(w.dd)} · 距 200 日線 ${sgn(w.dist)} · 逆勢第 ${w.lvl} 階 · 順勢${w.on ? '進場' : '出場'}` + (sn == null ? '' : ` · 低檔分數 ${sn}/5`);
+  const sn = scoreIf(px), t = D.today, nx = D.next, R = D.rule, step = R.ladder[nx.lvl];
+  $('wi-meta').textContent = `逆勢第 ${w.lvl} 階 · 順勢${w.on ? '進場' : '出場'}` + (sn ? ` · 低檔分數 ${sn.n}/5` : '');
+  $('wi-h0').textContent = `${md(t.date)} 收盤`;
+  const mark = (on, cls) => [on ? '✓' : '—', on ? cls : 'miss'];
+  const rows = [tr(['距一年高點', [pct(t.dd), 'd'], [pct(w.dd), w.lvl > nx.lvl ? 'flag' : 'd'], step ? `≤ −${Math.round(step[0] * 100)}% 加碼` : '—', mark(w.lvl > nx.lvl, 'flag')]),
+    tr(['距 200 日線', [sgn(t.dist), 'd'], [sgn(w.dist), w.on !== !!nx.on ? 'flag' : 'd'], nx.on ? `< −${Math.round(R.buf * 100)}% 出場` : `> +${Math.round(R.buf * 100)}% 進場`, mark(w.on !== !!nx.on, 'flag')])];
+  if (sn) sn.items.forEach((it) => rows.push(tr([it.name, [scFmt(Object.assign({}, it, { v: it.was })), 'd'], [scFmt(it), it.hit ? 'zin' : 'd'], scThr(it), mark(it.hit, 'hit')])));
+  $('wi-body').replaceChildren(...rows);
   if (w.changed) { const z = position({ wL: w.wL, w50: w.w50, wC: w.wC }); if (z) z.trades.forEach((x) => tr0.append(el('span', '屆時 ' + x, 'trade'))); }
 }
 function renderMine() {
@@ -536,7 +574,7 @@ function renderToday() {
   $('hero').classList.toggle('is-act', !!t.changed);
   $('sig-chip').textContent = t.changed ? '訊號變更' : '訊號不變'; $('sig-chip').className = 'chip' + (t.changed ? ' act' : '');
   $('sig-msg').textContent = t.changed ? `下一個交易日收盤前調整${tpe > t.date ? '（今天有開市就是今天）' : ''}` : '沒有因訊號要做的調整';
-  renderMine(); renderStress(); renderScore();
+  renderMine(); renderStress(); renderScore(); renderLive();
   const live = D.live && D.live.date > t.date ? D.live : null, pxIn = $('in-px');
   if (!pxIn.dataset.touched) pxIn.value = live ? Math.round(live.px) : t.close;
   $('wi-src').textContent = live ? `預設為 ${new Date(live.at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Taipei' })} 的盤中價，可改` : '預設為最新收盤，可改成現價';
@@ -737,6 +775,17 @@ range = [126, 252, 750].includes(+store.get('range', 252)) ? +store.get('range',
     $('loading').hidden = true; renderToday(); renderSizing(); show(current());
   } catch (e) { $('loading').textContent = '資料讀取失敗，請重新整理。'; }
 })();
+/* 每分鐘重新讀取一次資料（分頁在背景時不讀）；盤中報價約 5 分鐘更新一次 */
+async function refresh() {
+  if (!D || document.hidden) return;
+  try {
+    const r = await fetch('data/data.json?t=' + Date.now()); if (!r.ok) return;
+    const nd = await r.json(); if (nd.generated === D.generated) { renderLive(); return; }
+    const newDay = nd.asof !== D.asof; D = nd; renderToday(); renderSizing(); if (newDay) show(current());
+  } catch (e) { /* 讀不到就等下一次 */ }
+}
+setInterval(refresh, 60000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
 </script>
 </body>
 </html>

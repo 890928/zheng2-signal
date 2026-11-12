@@ -261,6 +261,7 @@ def score_block(dates, closes, vix, keep_n):
     lv = vix["close"][-1] if vix["dates"] else None
     lm = (bal["amt"][-1] / bal["amt"][-11] - 1) * 100 if len(bal["amt"]) > 10 else None
     nxt = {"hi59": round(max(closes[-59:]), 2), "sum59": round(sum(closes[-59:]), 2), "last": closes[-1], "up": up, "dn": dn,
+           "vix": lv, "m10": None if lm is None else round(lm, 3),
            "fixed": sum(_hit(op, {"vix": lv, "m10": lm}[k], th) for k, _, op, th, _ in SCORE if k in ("vix", "m10"))}
     block = {"n": t["n"], "sig": SCORE_SIG, "since": since, "vix_date": t["vix_date"], "bal_date": t["bal_date"],
              "new": int(t["n"] >= SCORE_SIG and max(before, default=0) < SCORE_SIG),
@@ -450,7 +451,32 @@ def asof(series, key, d, strict=False):
     return best
 
 
+def live_only(old):
+    """盤中的輕量更新：只抓三個即時報價，其餘沿用上一次完整更新的結果。回傳是否已處理。
+    條件不符（還沒有今天的完整資料、收盤價還沒核對、不在盤中）就回傳 False，改走完整更新。"""
+    if not (old.get("asof") and old.get("today", {}).get("confirmed") and "m10" in old.get("next", {}).get("score", {})):
+        return False
+    try:
+        tw = fetch("^TWII", 0.25)
+        if not tw["live"] or tw["dates"][-1] != old["asof"]:
+            return False
+        p50, pl = fetch("0050.TW", 0.25), fetch("00631L.TW", 0.25)
+    except Exception as e:  # noqa: BLE001
+        print(f"[警告] 盤中報價沒有抓到：{e}", file=sys.stderr)
+        return False
+    old["live"] = dict(tw["live"], px50=(p50["live"] or {}).get("px"), pxL=(pl["live"] or {}).get("px"))
+    old["generated"] = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with open(OUT, "w", encoding="utf-8") as f:
+        json.dump(old, f, ensure_ascii=False, separators=(",", ":"))
+    if os.environ.get("NOTIFY_DIR"):                  # 告訴 workflow 這次只有即時報價，不用提交
+        open(os.path.join(os.environ["NOTIFY_DIR"], "z2_live_only"), "w").close()
+    print(f"盤中報價 {old['live']['at']}：加權 {old['live']['px']}")
+    return True
+
+
 def main():
+    if live_only(_load("data.json", {})):
+        return
     tw = fetch("^TWII", BT_YEARS + 2.5)
     p50 = fetch("0050.TW", BT_YEARS + 1.6)
     pl = fetch("00631L.TW", BT_YEARS + 1.6)
