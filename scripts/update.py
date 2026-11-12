@@ -17,6 +17,7 @@ import datetime as dt
 import json
 import os
 import ssl
+import subprocess
 import sys
 import time
 import urllib.error
@@ -474,7 +475,119 @@ def live_only(old):
     return True
 
 
+# ───────────────────────────── 盤中迴圈 ─────────────────────────────
+# GitHub 的排程常常延遲或漏跑，所以盤中不靠排程：workflow 的 live 工作只要被啟動一次，
+# 就自己每分鐘抓一次報價、把 live.json 推到 live 分支（網頁直接讀那個檔），收盤後再自己觸發一次完整更新。
+MIS = "https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_t00.tw|tse_0050.tw|tse_00631L.tw&json=1&delay=0"
+TPE = dt.timezone(dt.timedelta(hours=8))
+LOOP_SEC, OPEN_MIN, CLOSE_MIN = 60, 9 * 60, 13 * 60 + 34
+
+
+def _utc():
+    return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def quotes_mis():
+    """證交所基本市況報導站的即時報價（加權指數約 5 秒一筆）。"""
+    r = fetch_json(MIS + f"&_={int(time.time() * 1000)}", "https://mis.twse.com.tw/stock/index.jsp", tries=1)
+    by = {m["c"]: m for m in r.get("msgArray") or []}
+
+    def px(m):
+        try:
+            return round(float(m["z"]), 2)
+        except (KeyError, ValueError):               # 個股當下沒有成交時 z 是 "-"，改用最佳買賣價的中間值
+            return round((float(m["a"].split("_")[0]) + float(m["b"].split("_")[0])) / 2, 2)
+
+    t = by["t00"]
+    at = dt.datetime.strptime(t["d"] + t["t"], "%Y%m%d%H:%M:%S").replace(tzinfo=TPE)
+    return {"date": at.strftime("%Y-%m-%d"), "px": px(t), "at": at.astimezone(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "px50": px(by["0050"]), "pxL": px(by["00631L"]), "src": "twse"}
+
+
+def quotes_yahoo():
+    tw = fetch("^TWII", 0.25)
+    if not tw["live"]:
+        return None
+    return dict(tw["live"], px50=(fetch("0050.TW", 0.25)["live"] or {}).get("px"), pxL=(fetch("00631L.TW", 0.25)["live"] or {}).get("px"), src="yahoo")
+
+
+def push_live(obj):
+    """把 live.json 推到 live 分支（每次都是單一個新 commit，強制覆蓋，不累積歷史）。"""
+    root = os.path.abspath(os.path.join(DATA_DIR, ".."))
+    who = {"NAME": "github-actions[bot]", "EMAIL": "41898282+github-actions[bot]@users.noreply.github.com"}
+    env = dict(os.environ, **{f"GIT_{r}_{k}": v for r in ("AUTHOR", "COMMITTER") for k, v in who.items()})
+
+    def git(*a, text=None):
+        return subprocess.run(("git",) + a, cwd=root, env=env, input=text, check=True, capture_output=True, text=True).stdout.strip()
+
+    blob = git("hash-object", "-w", "--stdin", text=json.dumps(obj, ensure_ascii=False, separators=(",", ":")))
+    tree = git("mktree", text=f"100644 blob {blob}\tlive.json\n")
+    git("push", "-f", "-q", "origin", f"{git('commit-tree', tree, '-m', 'live')}:refs/heads/live")
+
+
+def dispatch():
+    """觸發一次新的完整更新（用 workflow_dispatch，不受排程延遲影響）。"""
+    if os.environ.get("GITHUB_ACTIONS"):
+        subprocess.run(["gh", "workflow", "run", "update.yml", "--ref", "main"], check=False)
+
+
+def loop():
+    now = lambda: dt.datetime.now(TPE)  # noqa: E731
+    mins = lambda x: x.hour * 60 + x.minute  # noqa: E731
+    old = _load("data.json", {})
+    try:
+        push_live({"asof": old.get("asof"), "generated": _utc(), "live": None})      # 啟動時先報到一次
+    except Exception as e:  # noqa: BLE001
+        print(f"[警告] live 分支推不上去：{e}", file=sys.stderr)
+    n = now()
+    if n.weekday() >= 5 or mins(n) < OPEN_MIN - 60:
+        return
+    today, was_live, fails = n.strftime("%Y-%m-%d"), False, 0
+    while mins(now()) <= CLOSE_MIN:
+        if mins(now()) >= OPEN_MIN:
+            q = None
+            try:
+                q = quotes_mis()
+            except Exception as e:  # noqa: BLE001
+                try:
+                    q = quotes_yahoo()
+                except Exception as e2:  # noqa: BLE001
+                    print(f"[警告] 報價沒有抓到：{e}；{e2}", file=sys.stderr)
+            if q and q["date"] == today and q["date"] > old.get("asof", ""):
+                try:
+                    push_live({"asof": old["asof"], "generated": _utc(), "live": q})
+                    was_live, fails = True, 0
+                    print(f"{q['at']} 加權 {q['px']}（{q['src']}）", flush=True)
+                except Exception as e:  # noqa: BLE001
+                    fails += 1
+                    print(f"[警告] live.json 沒有推上去：{e}", file=sys.stderr)
+            elif not was_live and mins(now()) > OPEN_MIN + 20:
+                print("今天沒有開市，結束")
+                return
+            if fails >= 10:
+                return
+        time.sleep(LOOP_SEC)
+    n = now()
+    if was_live:                                     # 剛收盤：等報價源出收盤價，再觸發完整更新
+        time.sleep(120)
+        return dispatch()
+    if mins(n) > 19 * 60 + 30:
+        return
+    # 收盤後：今天的收盤還沒進來、或還沒用證交所收盤價核對，就隔一陣子再跑一次，直到完成
+    done = old.get("asof") == today and old.get("today", {}).get("confirmed")
+    if not done:
+        try:
+            traded = quotes_mis()["date"] == today
+        except Exception:  # noqa: BLE001
+            traded = old.get("asof") == today
+        if traded:
+            time.sleep(20 * 60 if old.get("asof") == today else 5 * 60)
+            dispatch()
+
+
 def main():
+    if "--loop" in sys.argv:
+        return loop()
     if live_only(_load("data.json", {})):
         return
     tw = fetch("^TWII", BT_YEARS + 2.5)

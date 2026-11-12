@@ -383,7 +383,7 @@ ol.steps li, ul.rules li { margin: 5px 0; }
         <li>壓力測試最大回撤約 67%（2000–2008）。</li>
         <li>VIX、融資餘額、擔保維持率、極端值統計與低檔分數只供參考，不影響目標配置。</li>
         <li>回測對照：50:50 是 00631L 與現金各半、偏離 10 個百分點再平衡；純逆勢是只用逆勢桶。</li>
-        <li>盤中約每 5 分鐘更新一次報價（常會延遲 5–15 分鐘，以畫面上的時間為準）。盤中的配置與分數是以現價試算，正式訊號與通知以收盤為準。</li>
+        <li>盤中約每分鐘更新一次報價（證交所即時行情；以畫面上的時間為準，偶爾會晚幾分鐘或晚開始）。盤中的配置與分數是以現價試算，正式訊號與通知以收盤為準。</li>
         <li>收盤價以證交所公布的為準；標示「待官方核對」時用的是 Yahoo 的暫定價，訊號通知會等核對後才發。</li>
         <li>部位壓力是估算：00631L 以兩倍複利計，實際會受波動與折溢價影響；也沒算照規則中途調整的效果。</li>
         <li>2015/9 以前的 00631L 為合成資料；00631L 的額外報酬近年已縮小。</li>
@@ -772,17 +772,26 @@ range = [126, 252, 750].includes(+store.get('range', 252)) ? +store.get('range',
   const get = (u, must) => fetch(u).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).catch((e) => { if (must) throw e; return null; });
   try {
     [D, S, E] = await Promise.all([get('data/data.json?t=' + Date.now(), true), get('data/stress.json'), get('data/extremes.json')]);
-    $('loading').hidden = true; renderToday(); renderSizing(); show(current());
+    $('loading').hidden = true; renderToday(); renderSizing(); show(current()); pullLive();
   } catch (e) { $('loading').textContent = '資料讀取失敗，請重新整理。'; }
 })();
-/* 每分鐘重新讀取一次資料（分頁在背景時不讀）；盤中報價約 5 分鐘更新一次 */
+/* 每分鐘重新讀取一次資料（分頁在背景時不讀） */
 async function refresh() {
   if (!D || document.hidden) return;
   try {
     const r = await fetch('data/data.json?t=' + Date.now()); if (!r.ok) return;
-    const nd = await r.json(); if (nd.generated === D.generated) { renderLive(); return; }
-    const newDay = nd.asof !== D.asof; D = nd; renderToday(); renderSizing(); if (newDay) show(current());
+    const nd = await r.json();
+    if (nd.generated !== D.generated) { const newDay = nd.asof !== D.asof; D = nd; mergeLive(); renderToday(); renderSizing(); if (newDay) show(current()); }
   } catch (e) { /* 讀不到就等下一次 */ }
+  await pullLive(); renderLive();
+}
+/* 盤中報價：GitHub 上的 live 分支每分鐘更新一次（只有部署在 github.io 時才有） */
+let LV = null;
+const liveURL = () => { const h = location.hostname, r = location.pathname.split('/')[1]; return h.endsWith('.github.io') && r ? `https://raw.githubusercontent.com/${h.split('.')[0]}/${r}/live/live.json` : null; };
+function mergeLive() { if (!LV || !LV.live || LV.asof !== D.asof || LV.live.date <= D.today.date || (D.live && D.live.at >= LV.live.at)) return false; D.live = LV.live; return true; }
+async function pullLive() {
+  const u = liveURL(); if (!u || !D) return;
+  try { const r = await fetch(u + '?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return; LV = await r.json(); if (mergeLive()) { renderToday(); renderSizing(); } } catch (e) { /* 沒有就用 data.json 裡的報價 */ }
 }
 setInterval(refresh, 60000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
